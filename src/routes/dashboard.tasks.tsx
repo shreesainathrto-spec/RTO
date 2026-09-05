@@ -2486,12 +2486,14 @@ function TaskTable({
                   <>
                     <th className="p-3">TASK CREATED DATE</th>
                     <th className="p-3">VEHICLE NUMBER</th>
-                    <th className="p-3">OWNER NAME</th>
-                    <th className="p-3 text-center">TOTAL SERVICES</th>
-                    <th className="p-3">ASSIGNED EMPLOYEE</th>
+                    <th className="p-3">SERVICES</th>
+                    <th className="p-3">CLIENT NAME</th>
+                    <th className="p-3">NUMBER</th>
                     <th className="p-3">TASK STATUS</th>
                     <th className="p-3">LATEST REMARK</th>
                     <th className="p-3">APPLICATION NO.</th>
+                    <th className="p-3">REFERENCE</th>
+                    <th className="p-3">ASSIGNED EMPLOYEE</th>
                     <th className="p-3">PUC EXPIRY</th>
                     <th className="p-3">TAX EXPIRY</th>
                     <th className="p-3">FITNESS EXPIRY</th>
@@ -2829,6 +2831,8 @@ function TaskTable({
                 
                 const appNo = tRaw.applicationId || linkedApp?.applicationId || "—";
                 const appType = tRaw.applicationType || linkedApp?.applicationType || "Home";
+                const clientNumber = tRaw.clientPhone || tRaw.ownerPhone || tRaw.mobileNumber || tRaw.phone || linkedApp?.mobileNumber || linkedApp?.phone || linkedApp?.ownerPhone || "—";
+                const reference = tRaw.reference || linkedApp?.reference || "—";
 
                 return (
                   <tr key={t.id} style={getApplicationTypeStyle(appType)} className="hover:bg-slate-50/40 border-b border-slate-100 transition-colors">
@@ -2843,14 +2847,16 @@ function TaskTable({
                         "—"
                       )}
                     </td>
+                    <td className="p-3 text-xs font-semibold text-slate-800" title={srvList.join(", ")}>
+                      <div className="max-w-[120px] truncate">
+                        {srvList.join(", ")}
+                      </div>
+                    </td>
                     <td className="p-3 font-bold text-slate-900" title={ownerName}>
                       {ownerName}
                     </td>
-                    <td className="p-3 text-center font-bold text-slate-800">
-                      {totalServices}
-                    </td>
-                    <td className="p-3 text-slate-700 font-semibold" title={assignedEmployee}>
-                      {assignedEmployee}
+                    <td className="p-3 font-mono text-slate-700">
+                      {clientNumber}
                     </td>
                     <td className="p-3">
                       <select
@@ -2873,6 +2879,12 @@ function TaskTable({
                     </td>
                     <td className="p-3 font-semibold text-blue-600 font-mono">
                       {appNo}
+                    </td>
+                    <td className="p-3 font-mono text-slate-600 truncate max-w-[100px]" title={reference}>
+                      {reference}
+                    </td>
+                    <td className="p-3 text-slate-700 font-semibold" title={assignedEmployee}>
+                      {assignedEmployee}
                     </td>
                     <td className="p-3 font-mono text-slate-600">{pucExp}</td>
                     <td className="p-3 font-mono text-slate-600">{taxExp}</td>
