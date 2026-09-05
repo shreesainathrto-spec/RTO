@@ -6896,6 +6896,23 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="border-t border-slate-100 pt-4 mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InlineDocUpload
+                    label="Previous Policy"
+                    docName="Previous Policy"
+                    uploadedDocs={uploadedDocs}
+                    setUploadedDocs={setUploadedDocs}
+                    setPreviewDoc={setPreviewDoc}
+                  />
+                  <InlineDocUpload
+                    label="RC Document"
+                    docName="RC Document"
+                    uploadedDocs={uploadedDocs}
+                    setUploadedDocs={setUploadedDocs}
+                    setPreviewDoc={setPreviewDoc}
+                  />
+                </div>
+
+                <div className="border-t border-slate-100 pt-4 mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="font-bold text-slate-800 block mb-1 text-xs uppercase">કુલ રકમ (₹) *</label>
                     <input
