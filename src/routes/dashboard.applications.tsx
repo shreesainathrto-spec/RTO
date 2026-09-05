@@ -187,7 +187,7 @@ const SERVICE_GROUPS = [
   },
   {
     category: "COMPLIANCE / OTHER",
-    items: ["Tax", "PUC", "Tax Detail Update"],
+    items: ["Tax", "PUC", "Tax Detail Update (Glitch)"],
   },
 ];
 

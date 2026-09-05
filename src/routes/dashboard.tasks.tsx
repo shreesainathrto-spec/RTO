@@ -2391,11 +2391,31 @@ function TaskTable({
       )
     );
   }, [tasks, isLicenceSubModule]);
+  const taskTableRef = useRef<HTMLDivElement>(null);
+  const taskMirrorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const table = taskTableRef.current;
+    const mirror = taskMirrorRef.current;
+    if (!table || !mirror) return;
+    const syncTable = () => { mirror.scrollLeft = table.scrollLeft; };
+    const syncMirror = () => { table.scrollLeft = mirror.scrollLeft; };
+    table.addEventListener('scroll', syncTable);
+    mirror.addEventListener('scroll', syncMirror);
+    return () => {
+      table.removeEventListener('scroll', syncTable);
+      mirror.removeEventListener('scroll', syncMirror);
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
       <div className="border rounded-xl bg-white overflow-hidden shadow-sm">
-        <div className="max-h-[60vh] overflow-y-auto relative">
+        {/* Mirror scrollbar at top */}
+        <div ref={taskMirrorRef} className="overflow-x-auto" style={{height: '10px', overflowY: 'hidden'}}>
+          <div style={{height: '1px', minWidth: '1400px'}} />
+        </div>
+        <div ref={taskTableRef} className="max-h-[60vh] overflow-y-auto overflow-x-auto relative">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="sticky top-0 bg-slate-50 text-gray-500 uppercase font-bold text-[9px] border-b z-10">
               <tr>

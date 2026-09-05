@@ -2301,23 +2301,23 @@ function AccountingDashboardPage() {
                   No collection records found.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
+                <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-260px)]" style={{transform: 'rotateX(180deg)'}}>
+                  <table className="w-full text-left border-collapse text-xs" style={{transform: 'rotateX(180deg)'}}>
+                    <thead className="sticky bottom-0 z-10">
                       <tr className="border-b bg-slate-50 uppercase text-[9px] font-bold text-muted-foreground">
-                        <th className="p-3">Client</th>
-                        <th className="p-3">Vehicle Number</th>
-                        <th className="p-3">Services</th>
-                        <th className="p-3">Collection Date</th>
-                        <th className="p-3 text-right">Total Charges</th>
-                        <th className="p-3 text-right">Advance Paid</th>
-                        <th className="p-3 text-right">RTO Receipt</th>
-                        <th className="p-3 text-right">Outstanding</th>
-                        {isAdmin && <th className="p-3 text-right">RTO Expense</th>}
-                        {isAdmin && <th className="p-3 text-right">Gross Profit</th>}
-                        <th className="p-3">Assigned Employee</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3 text-center">Actions</th>
+                        <th className="p-3 bg-slate-50">Client</th>
+                        <th className="p-3 bg-slate-50">Vehicle Number</th>
+                        <th className="p-3 bg-slate-50">Services</th>
+                        <th className="p-3 bg-slate-50">Collection Date</th>
+                        <th className="p-3 text-right bg-slate-50">Total Charges</th>
+                        <th className="p-3 text-right bg-slate-50">Advance Paid</th>
+                        <th className="p-3 text-right bg-slate-50">RTO Receipt</th>
+                        <th className="p-3 text-right bg-slate-50">Outstanding</th>
+                        {isAdmin && <th className="p-3 text-right bg-slate-50">RTO Expense</th>}
+                        {isAdmin && <th className="p-3 text-right bg-slate-50">Gross Profit</th>}
+                        <th className="p-3 bg-slate-50">Assigned Employee</th>
+                        <th className="p-3 bg-slate-50">Status</th>
+                        <th className="p-3 text-center bg-slate-50">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y text-gray-700">
@@ -2621,20 +2621,20 @@ function AccountingDashboardPage() {
                   No client records found.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-260px)]">
                   <table className="w-full text-left border-collapse text-xs">
-                    <thead>
+                    <thead className="sticky top-0 z-10">
                       <tr className="border-b bg-slate-50 uppercase text-[9px] font-bold text-muted-foreground">
-                        <th className="p-3">Client Name</th>
-                        <th className="p-3">Mobile</th>
-                        <th className="p-3">Vehicle Number</th>
-                        <th className="p-3">Service Type</th>
-                        <th className="p-3 text-center">Total Invoices</th>
-                        <th className="p-3 text-right">Invoiced Amount</th>
-                        <th className="p-3 text-right">Total Received</th>
-                        <th className="p-3 text-right">Total Outstanding</th>
-                        <th className="p-3">Last Payment Date</th>
-                        <th className="p-3 text-center">Actions</th>
+                        <th className="p-3 bg-slate-50">Client Name</th>
+                        <th className="p-3 bg-slate-50">Mobile</th>
+                        <th className="p-3 bg-slate-50">Vehicle Number</th>
+                        <th className="p-3 bg-slate-50">Service Type</th>
+                        <th className="p-3 text-center bg-slate-50">Total Invoices</th>
+                        <th className="p-3 text-right bg-slate-50">Invoiced Amount</th>
+                        <th className="p-3 text-right bg-slate-50">Total Received</th>
+                        <th className="p-3 text-right bg-slate-50">Total Outstanding</th>
+                        <th className="p-3 bg-slate-50">Last Payment Date</th>
+                        <th className="p-3 text-center bg-slate-50">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y text-gray-700">
