@@ -81,7 +81,8 @@ export const SUBMODULE_SERVICES: Record<SubModuleType, string[]> = {
     "Vehicle Conversion",
     "Tax",
     "PUC",
-    "Tax Detail Update (Glitch)"
+    "Tax Detail Update (Glitch)",
+    "RMA(other state to gujarat)"
   ],
   licence: [
     "Issue Of Duplicate DL",
