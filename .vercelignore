@@ -1,0 +1,75 @@
+# Vercel build ignore list
+# These files/directories are not needed for Vercel deployment
+
+# Cloudflare-specific (no longer needed for Vercel)
+wrangler.jsonc
+wrangler.lock
+
+# Development-only files
+.dev.vars
+*.local
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (optional - keep if you want docs in deployment)
+# *.md
+# QUICK_START.md
+# USER_GUIDE.md
+# TECHNICAL_REFERENCE.md
+
+# Git
+.git
+.gitignore
+
+# Node/Package manager
+node_modules
+.pnpm-store
+*.pnpm-debug.log
+npm-debug.log
+yarn-error.log
+bun.lockb
+
+# Build outputs (these will be rebuilt)
+dist
+build
+.next
+out
+
+# Test files and coverage
+__tests__
+test
+tests
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage
+.coverage
+
+# Environment files (keep .vercelenv.example as documentation)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+.cache
+tmp
+temp
+
+# Prettier and ESLint cache
+.prettierignore
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo

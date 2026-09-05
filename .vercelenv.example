@@ -1,0 +1,35 @@
+# Firebase Configuration for Vercel Deployment
+# 
+# IMPORTANT: Add these environment variables to your Vercel project dashboard:
+# 1. Go to https://vercel.com/dashboard
+# 2. Select your project
+# 3. Click "Settings" → "Environment Variables"
+# 4. Add the variables below from your Firebase project settings
+#
+# To find your Firebase credentials:
+# 1. Go to Firebase Console (https://console.firebase.google.com)
+# 2. Select your project
+# 3. Click Settings (gear icon) → Project settings
+# 4. Copy the values from the "firebaseConfig" object
+
+# Firebase API Key (public - safe to expose in client-side code)
+VITE_FIREBASE_API_KEY=your_api_key_here
+
+# Firebase Authentication Domain (project-specific)
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+
+# Firebase Project ID (public - safe to expose)
+VITE_FIREBASE_PROJECT_ID=your_project_id
+
+# Firebase Storage Bucket (public - safe to expose)
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+
+# Firebase Cloud Messaging Sender ID (public - safe to expose)
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+
+# Firebase App ID (public - safe to expose)
+VITE_FIREBASE_APP_ID=your_app_id
+
+# These variables are prefixed with VITE_ so they are accessible in client-side code
+# All Firebase credentials here are public and meant for client-side use only
+# Never expose private keys like service account credentials in client-side code

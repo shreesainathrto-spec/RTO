@@ -1,0 +1,8 @@
+- [ ] Refactor accounting helpers in `src/lib/records.ts` to rely on `services[]` only and deprecate legacy fields.
+- [x] Update `src/lib/services.ts` and `src/lib/tasks.ts` `saveRecord` to normalize services, remove legacy writes, and log activity per service.
+- [x] Modify payment flow in `src/components/ClientProfile.tsx` to update `amountReceived` on the specific service via Firestore.
+- [ ] Adjust UI components (`ClientProfile.tsx`, `ServiceDashboard.tsx`, `RecordTable.tsx`, `dashboard.accounting.tsx`) to display accounting from `services[]` and remove fallback `|| 0`.
+- [ ] Add temporary `console.debug` logs before/after saves, loads, and service module loads.
+- [ ] Remove all legacy fallback code (`receivedAmount || 0`, etc.) from the codebase.
+- [ ] Write unit tests for accounting helper functions.
+- [ ] Perform manual verification steps across UI pages.

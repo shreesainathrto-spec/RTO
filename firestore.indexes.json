@@ -1,0 +1,133 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "accounts_ledger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "account",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "clientPayments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "clientId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "billing_invoice_payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "invoiceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registry_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "recordId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registry_customer_docs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "customerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "addedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registry_applications_v1",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "subModule",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "vehicleNumber",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registry_applications_v1",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "subModule",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ownerName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "mobileNumber",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "DrivingSchoolApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "studentName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "mobileNumber",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

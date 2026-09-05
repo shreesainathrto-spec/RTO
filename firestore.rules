@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check caller is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: check caller is admin (role stored in their users doc)
+    function isAdmin() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ── Internal meta / provisioning flag ────────────────────────────────────
+    match /_meta/{doc} {
+      allow read, write: if isAuth();
+    }
+
+    // ── User profiles ─────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isAuth();
+      allow create: if true;                  // allow first-run self-provisioning
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Client & lead records ─────────────────────────────────────────────────
+    match /registry_clients/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth();              // staff can update their own records
+    }
+
+    match /registry_leads/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    // ── Tasks ─────────────────────────────────────────────────────────────────
+    match /registry_tasks/{id} {
+      allow read: if isAuth();
+      allow create: if isAuth();             // Any authenticated user can create tasks
+      allow update: if isAuth();             // staff can add comments, mark done
+      allow delete: if isAdmin();
+    }
+
+    // ── Task Templates ────────────────────────────────────────────────────────
+    match /task_templates/{id} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ── Client documents metadata ─────────────────────────────────────────────
+    match /registry_client_docs/{id} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── V2 Hierarchy collections ──────────────────────────────────────────────
+    match /registry_clients_v2/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    match /registry_vehicles_v2/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    match /registry_services_v2/{id} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    match /office_expenses/{id} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
