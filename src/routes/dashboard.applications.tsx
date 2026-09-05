@@ -1992,6 +1992,7 @@ function ApplicationFormModal({
   const [taxIssueDate, setTaxIssueDate] = useState(editingApp?.vehicleDetails?.taxDetails?.issueDate || "");
   const [taxExpiryDate, setTaxExpiryDate] = useState(editingApp?.vehicleDetails?.taxDetails?.expiryDate || "");
   const [taxAmount, setTaxAmount] = useState<number>(editingApp?.vehicleDetails?.taxDetails?.amount || 0);
+  const [taxPeriod, setTaxPeriod] = useState<string>(editingApp?.vehicleDetails?.taxDetails?.period || "");
 
   const insuranceCompanies = useMemo(() => {
     try {
@@ -7413,6 +7414,18 @@ function ApplicationFormModal({
                         </div>
                       </>
                     )}
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">TAX PERIOD</label>
+                      <select
+                        value={taxPeriod}
+                        onChange={(e) => setTaxPeriod(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
+                      >
+                        <option value="">Select Period</option>
+                        <option value="Quarterly">Quarterly</option>
+                        <option value="Yearly">Yearly</option>
+                      </select>
+                    </div>
                     <div>
                       <label className="font-semibold text-slate-700 block mb-1">AMOUNT (₹)</label>
                       <input

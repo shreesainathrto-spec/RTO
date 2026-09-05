@@ -2393,29 +2393,42 @@ function TaskTable({
   }, [tasks, isLicenceSubModule]);
   const taskTableRef = useRef<HTMLDivElement>(null);
   const taskMirrorRef = useRef<HTMLDivElement>(null);
+  const taskMirrorInnerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const table = taskTableRef.current;
     const mirror = taskMirrorRef.current;
-    if (!table || !mirror) return;
+    const mirrorInner = taskMirrorInnerRef.current;
+    if (!table || !mirror || !mirrorInner) return;
+
+    // Sync scroll positions
     const syncTable = () => { mirror.scrollLeft = table.scrollLeft; };
     const syncMirror = () => { table.scrollLeft = mirror.scrollLeft; };
     table.addEventListener('scroll', syncTable);
     mirror.addEventListener('scroll', syncMirror);
+
+    // Keep mirror inner width = actual table scroll width
+    const ro = new ResizeObserver(() => {
+      mirrorInner.style.width = table.scrollWidth + 'px';
+    });
+    ro.observe(table);
+    mirrorInner.style.width = table.scrollWidth + 'px';
+
     return () => {
       table.removeEventListener('scroll', syncTable);
       mirror.removeEventListener('scroll', syncMirror);
+      ro.disconnect();
     };
   }, []);
 
   return (
     <div className="space-y-4">
-      <div className="border rounded-xl bg-white overflow-hidden shadow-sm">
+      <div className="border rounded-xl bg-white shadow-sm">
         {/* Mirror scrollbar at top */}
-        <div ref={taskMirrorRef} className="overflow-x-auto" style={{height: '10px', overflowY: 'hidden'}}>
-          <div style={{height: '1px', minWidth: '1400px'}} />
+        <div ref={taskMirrorRef} style={{overflowX: 'auto', overflowY: 'hidden', height: '14px', borderBottom: '1px solid #e2e8f0'}}>
+          <div ref={taskMirrorInnerRef} style={{height: '1px', minWidth: '100%'}} />
         </div>
-        <div ref={taskTableRef} className="max-h-[60vh] overflow-y-auto overflow-x-auto relative">
+        <div ref={taskTableRef} className="max-h-[60vh] overflow-y-auto overflow-x-auto relative [&::-webkit-scrollbar]:hidden" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           <table className="w-full text-left text-xs border-collapse">
             <thead className="sticky top-0 bg-slate-50 text-gray-500 uppercase font-bold text-[9px] border-b z-10">
               <tr>

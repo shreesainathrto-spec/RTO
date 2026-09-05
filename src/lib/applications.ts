@@ -193,6 +193,7 @@ export interface VehicleMaster {
     issueDate?: string;
     expiryDate?: string;
     amount?: number;
+    period?: string;
     receiptUrl?: string;
     rcUrl?: string;
   };
