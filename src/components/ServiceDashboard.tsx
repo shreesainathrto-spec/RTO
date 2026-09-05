@@ -145,8 +145,8 @@ function aggregateServiceRecords(recs: RegistryRecord[], serviceType: ServiceTyp
     const earliestDueDate =
       dueDates.length > 0
         ? dueDates.reduce((earliest, current) => {
-            return new Date(current) < new Date(earliest) ? current : earliest;
-          })
+          return new Date(current) < new Date(earliest) ? current : earliest;
+        })
         : "";
 
     aggregatedRecords.push({
@@ -261,6 +261,7 @@ export function ServiceDashboard({
   // RTO Expense popup states
   const [showRtoExpenseModal, setShowRtoExpenseModal] = useState(false);
   const [rtoExpenseValue, setRtoExpenseValue] = useState<number>(0);
+  const [rtoExpensePaidBy, setRtoExpensePaidBy] = useState<string>("");
   const [rtoApptDate, setRtoApptDate] = useState("");
   const [pendingStatusChange, setPendingStatusChange] = useState<{ task: any; newStatus: string; isVahaan?: boolean } | null>(null);
 
@@ -274,11 +275,12 @@ export function ServiceDashboard({
     if (newStatus === "FAIL" || newStatus === "RETEST") {
       setPendingStatusChange({ task, newStatus, isVahaan: false });
       setRtoExpenseValue(task.rtoExpense || 0);
+      setRtoExpensePaidBy(task.rtoExpensePaidBy || "");
       setRtoApptDate(task.appointmentDate || "");
       setShowRtoExpenseModal(true);
     } else if (newStatus === "PASS") {
       setPendingStatusChange({ task, newStatus, isVahaan: false });
-      
+
       const currentStep = task.currentStep || 1;
       const lic = task.licenseDetails || {};
       let existNo = "";
@@ -407,7 +409,7 @@ export function ServiceDashboard({
           licenseDetails: lic,
           status: newStatus,
           updatedAt: new Date().toISOString()
-        }, { merge: true }).catch(() => {});
+        }, { merge: true }).catch(() => { });
       }
 
       toast.success("Licence details updated and status set to PASS!");
@@ -429,31 +431,37 @@ export function ServiceDashboard({
     if (pendingStatusChange) {
       const { task, newStatus, isVahaan } = pendingStatusChange;
       if (isVahaan) {
-        updateVahaanStatusInDb(task, newStatus, "", "", rtoExpenseValue);
+        updateVahaanStatusInDb(task, newStatus, "", "", rtoExpenseValue, rtoExpensePaidBy);
       } else {
-        updateLicenceStatusAndExpense(task, newStatus, rtoExpenseValue, rtoApptDate);
+        updateLicenceStatusAndExpense(task, newStatus, rtoExpenseValue, rtoApptDate, rtoExpensePaidBy);
       }
       setShowRtoExpenseModal(false);
       setPendingStatusChange(null);
+      setRtoExpensePaidBy("");
     }
   };
 
   const handleCancelRtoExpense = () => {
     setShowRtoExpenseModal(false);
     setPendingStatusChange(null);
+    setRtoExpensePaidBy("");
     toast.info("Status change cancelled");
   };
 
-  const updateLicenceStatusAndExpense = async (task: any, status: string, expense: number, apptDate: string) => {
+  const updateLicenceStatusAndExpense = async (task: any, status: string, expense: number, apptDate: string, paidBy?: string) => {
     try {
       const coll = task.sourceCollection || "registry_tasks";
       const docRef = doc(db, coll, task.id);
-      
+
       const updateData: any = {
         rtoExpense: Number(expense) || 0,
         appointmentDate: apptDate,
         updatedAt: new Date().toISOString()
       };
+
+      if (paidBy !== undefined) {
+        updateData.rtoExpensePaidBy = paidBy;
+      }
 
       if (coll === "registry_tasks") {
         updateData.status = status;
@@ -467,12 +475,19 @@ export function ServiceDashboard({
       const appId = task.applicationDocId || task.applicationId || task.recordId;
       if (appId) {
         const appRef = doc(db, "registry_applications_v1", appId);
-        await setDoc(appRef, {
+        
+        const appPayload: any = {
           rtoExpense: Number(expense) || 0,
           appointmentDate: apptDate,
           status: status,
           updatedAt: new Date().toISOString()
-        }, { merge: true }).catch(() => {});
+        };
+        
+        if (paidBy !== undefined) {
+          appPayload.rtoExpensePaidBy = paidBy;
+        }
+        
+        await setDoc(appRef, appPayload, { merge: true }).catch(() => { });
 
         await syncAccountingRecord(appId, {
           rtoExpense: Number(expense) || 0,
@@ -494,6 +509,7 @@ export function ServiceDashboard({
     } else if (newStatus.toUpperCase() === "INWARD") {
       setPendingStatusChange({ task, newStatus, isVahaan: true });
       setRtoExpenseValue(task.rtoExpense || 0);
+      setRtoExpensePaidBy(task.rtoExpensePaidBy || "");
       setRtoApptDate(task.appointmentDate || "");
       setShowRtoExpenseModal(true);
     } else {
@@ -501,11 +517,11 @@ export function ServiceDashboard({
     }
   };
 
-  const updateVahaanStatusInDb = async (task: any, status: string, holdReason = "", holdDate = "", rtoExpense?: number) => {
+  const updateVahaanStatusInDb = async (task: any, status: string, holdReason = "", holdDate = "", rtoExpense?: number, paidBy?: string) => {
     try {
       const coll = task.sourceCollection || "registry_services_v2";
       const docRef = doc(db, coll, task.id);
-      
+
       const updateData: any = {
         status: status,
         taskStatus: status,
@@ -519,6 +535,10 @@ export function ServiceDashboard({
 
       if (rtoExpense !== undefined) {
         updateData.rtoExpense = Number(rtoExpense) || 0;
+      }
+      
+      if (paidBy !== undefined) {
+        updateData.rtoExpensePaidBy = paidBy;
       }
 
       await setDoc(docRef, updateData, { merge: true });
@@ -534,7 +554,10 @@ export function ServiceDashboard({
         if (rtoExpense !== undefined) {
           appPayload.rtoExpense = Number(rtoExpense) || 0;
         }
-        await setDoc(appRef, appPayload, { merge: true }).catch(() => {});
+        if (paidBy !== undefined) {
+          appPayload.rtoExpensePaidBy = paidBy;
+        }
+        await setDoc(appRef, appPayload, { merge: true }).catch(() => { });
 
         await syncAccountingRecord(appDocId, {
           rtoExpense: rtoExpense !== undefined ? Number(rtoExpense) : undefined,
@@ -573,7 +596,7 @@ export function ServiceDashboard({
         throw new Error("Appointment Date must be in DD/MM/YYYY format.");
       }
       const docRef = doc(db, editingService.sourceCollection || "registry_services_v2", editingService.id);
-      
+
       const matchedStaff = STAFF_USERS.find(s => s.username === editAssignee);
       const assigneeName = matchedStaff ? matchedStaff.name : editAssignee;
 
@@ -614,8 +637,8 @@ export function ServiceDashboard({
           rtoReceiptAmount: rtoReceiptAmountVal,
           rtoReceiptNo: String(rtoReceiptAmountVal),
           updatedAt: new Date().toISOString()
-        }, { merge: true }).catch(() => {});
-        
+        }, { merge: true }).catch(() => { });
+
         await syncAccountingRecord(appDocId, {
           applicationId: editAppId,
           rtoReceipt: rtoReceiptAmountVal,
@@ -700,7 +723,7 @@ export function ServiceDashboard({
             const aAppId = a.applicationId ? a.applicationId.trim().toUpperCase() : "";
             const tAppId = item.applicationId ? item.applicationId.trim().toUpperCase() : "";
             const aVeh = a.vehicleNumber ? a.vehicleNumber.trim().toUpperCase().replace(/[\s-]/g, "") : "";
-            
+
             return (
               (tAppId && aAppId === tAppId) ||
               a.id === item.id ||
@@ -869,18 +892,37 @@ export function ServiceDashboard({
       });
     }
 
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase().trim();
-    return list.filter((t: any) => {
-      const matchTitle = (t.title || "").toLowerCase().includes(q);
-      const matchVehicle = (t.vehicleNumber || t.vehicleId || "").toLowerCase().includes(q);
-      const matchClient = (t.clientName || "").toLowerCase().includes(q);
-      const matchPhone = (t.mobileNumber || t.phone || "").toLowerCase().includes(q);
-      const matchAppNo = (t.applicationId || "").toLowerCase().includes(q);
-      const matchService = (t.serviceName || t.serviceType || "").toLowerCase().includes(q);
-      return matchTitle || matchVehicle || matchClient || matchPhone || matchAppNo || matchService;
+    let final = list;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      final = list.filter((t: any) => {
+        const matchTitle = (t.title || "").toLowerCase().includes(q);
+        const matchVehicle = (t.vehicleNumber || t.vehicleId || "").toLowerCase().includes(q);
+        const matchClient = (t.clientName || "").toLowerCase().includes(q);
+        const matchPhone = (t.mobileNumber || t.phone || "").toLowerCase().includes(q);
+        const matchAppNo = (t.applicationId || "").toLowerCase().includes(q);
+        const matchService = (t.serviceName || t.serviceType || "").toLowerCase().includes(q);
+        return matchTitle || matchVehicle || matchClient || matchPhone || matchAppNo || matchService;
+      });
+    }
+
+    const parseDate = (dStr: string) => {
+      if (!dStr) return 0;
+      if (dStr.includes('/')) {
+        const parts = dStr.split('/');
+        if (parts.length === 3) {
+          return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
+        }
+      }
+      return new Date(dStr).getTime() || 0;
+    };
+
+    return final.sort((a: any, b: any) => {
+      const dateA = parseDate(a.appointmentDate);
+      const dateB = parseDate(b.appointmentDate);
+      return dateB - dateA;
     });
-  }, [completedTasks, searchQuery, activeSubModule, groupFilter, statusFilter]);
+  }, [completedTasks, searchQuery, activeSubModule, groupFilter, statusFilter, apptDateFilter]);
 
   const openWorkflow = (record: RegistryRecord) => {
     setSelectedRecord(record);
@@ -1205,9 +1247,9 @@ export function ServiceDashboard({
                                 pStatus === "Pending" && "bg-amber-50 text-amber-700 border border-amber-200",
                                 pStatus === "Partial" && "bg-blue-50 text-blue-700 border border-blue-200"
                               )}
-                             >
-                               {formatPaymentStatus(pStatus)}
-                             </span>
+                            >
+                              {formatPaymentStatus(pStatus)}
+                            </span>
                           </td>
                           <td className="p-3">
                             {(() => {
@@ -1272,371 +1314,444 @@ export function ServiceDashboard({
                               </Button>
                             </div>
                           </td>
+                        </tr>
+                      );
+                    }
+
+                    const srvCount = t.services?.length || (t.serviceName ? t.serviceName.split(",").length : 1);
+
+                    const latestComment = t.comments && t.comments.length > 0
+                      ? [...t.comments].sort((a: any, b: any) => new Date(b.at || b.createdAt).getTime() - new Date(a.at || a.createdAt).getTime())[0]?.text
+                      : (t as any).lastRemark || (t as any).remarks || "—";
+
+                    return (
+                      <tr key={t.id} style={getApplicationTypeStyle(t.applicationType)} className="hover:bg-slate-50/40 border-b border-slate-100 transition-colors">
+                        <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-mono text-xs font-semibold text-blue-600">{t.applicationId || "—"}</td>
+                        <td className="p-3 font-mono font-semibold text-slate-900">
+                          {formatDateDDMMYYYY(t.appointmentDate)}
+                        </td>
+                        <td className="p-3 font-semibold text-indigo-600 text-center">{daysDiffStr}</td>
+                        <td className="p-3 font-semibold text-amber-600 text-center">{daysAfterApptStr}</td>
+                        <td className="p-3 font-mono font-bold text-slate-900">{t.vehicleNumber || t.vehicleId || "—"}</td>
+                        <td className="p-3 font-semibold text-slate-800">{t.clientName || t.ownerName || "—"}</td>
+                        <td className="p-3 text-center font-bold text-slate-800">{srvCount}</td>
+                        <td className="p-3 text-slate-700">{t.assignedEmployeeName || t.assignee || "Unassigned"}</td>
+                        <td className="p-3">
+                          {(() => {
+                            const sVal = t.status || t.taskStatus || "Completed";
+                            const normalized = sVal.toUpperCase() === "ON HOLD" ? "Onhold" : sVal;
+                            const statusVal = ["In RTO", "Inward", "Verify", "Approved", "Onhold"].includes(normalized) ? normalized : "In RTO";
+                            return (
+                              <select
+                                value={statusVal}
+                                onChange={(e) => handleVahaanStatusChange(t, e.target.value)}
+                                className={cn(
+                                  "px-2 py-1 rounded text-xs font-bold border bg-white cursor-pointer",
+                                  (() => {
+                                    const s = statusVal.toUpperCase();
+                                    switch (s) {
+                                      case "COMPLETED":
+                                        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                      case "IN RTO":
+                                      case "RTO":
+                                        return "bg-blue-50 text-blue-700 border-blue-200";
+                                      case "INWARD":
+                                        return "bg-purple-50 text-purple-700 border-purple-200";
+                                      case "VERIFY":
+                                        return "bg-indigo-50 text-indigo-700 border-indigo-200";
+                                      case "APPROVED":
+                                        return "bg-teal-50 text-teal-700 border-teal-200";
+                                      case "ON HOLD":
+                                      case "ONHOLD":
+                                        return "bg-amber-50 text-amber-700 border-amber-200";
+                                      default:
+                                        return "bg-slate-50 text-slate-700 border-slate-200";
+                                    }
+                                  })()
+                                )}
+                              >
+                                <option value="In RTO">In RTO</option>
+                                <option value="Inward">Inward</option>
+                                <option value="Verify">Verify</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Onhold">Onhold</option>
+                              </select>
+                            );
+                          })()}
+                        </td>
+                        <td className="p-3 max-w-[150px] truncate text-slate-500 text-[11px]" title={latestComment}>
+                          {latestComment}
+                        </td>
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.pucExpiryDate)}</td>
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.taxExpiryDate)}</td>
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.fitnessExpiryDate)}</td>
+                        {activeSubModule !== "services" && <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.insuranceExpiryDate)}</td>}
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.nationalPermitExpiryDate)}</td>
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.gujaratPermitExpiryDate)}</td>
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.npAuthExpiryDate)}</td>
+                        <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.registrationRenewalExpiryDate)}</td>
+                        <td className="p-3 font-bold text-slate-900 font-mono">
+                          ₹{Number(t.amount || t.totalAmount || 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="p-3 font-bold text-emerald-700 font-mono">
+                          ₹{Number(t.totalPaid || t.advanceAmount || 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="p-3">
+                          <ApplicationTypeBadge appType={t.applicationType} />
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingService(t);
+                                setEditStatus(t.status || t.taskStatus || "Completed");
+                                setEditAssignee(t.assignee || "");
+                                setEditApptDate(t.appointmentDate ? formatDateDDMMYYYY(t.appointmentDate) : "");
+                                setEditRtoReceiptAmount(t.rtoReceiptAmount || t.rtoExpense || t.rtoReceiptNo || "");
+                                setEditAppId(t.applicationId || "");
+                                setEditAppType(t.applicationType || "Home");
+                                setEditRemarks(t.remarks || t.notes || "");
+                                setEditHoldReason(t.holdReason || "");
+                                setEditHoldDate(t.holdDate || "");
+                              }}
+                              title="Edit Service"
+                            >
+                              <Eye className="size-3.5 text-blue-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!isAdmin) {
+                                  toast.error("Access Denied: Employees cannot edit completed service records");
+                                  return;
+                                }
+                                setEditingService(t);
+                                setEditStatus(t.status || t.taskStatus || "Completed");
+                                setEditAssignee(t.assignee || "");
+                                setEditApptDate(t.appointmentDate ? formatDateDDMMYYYY(t.appointmentDate) : "");
+                                setEditRtoReceiptAmount(t.rtoReceiptAmount || t.rtoExpense || t.rtoReceiptNo || "");
+                                setEditAppId(t.applicationId || "");
+                                setEditAppType(t.applicationType || "Home");
+                                setEditRemarks(t.remarks || t.notes || "");
+                                setEditHoldReason(t.holdReason || "");
+                                setEditHoldDate(t.holdDate || "");
+                              }}
+                              title="Edit Service"
+                            >
+                              <Pencil className="size-3.5 text-indigo-600" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     );
-                  }
-
-                  const srvCount = t.services?.length || (t.serviceName ? t.serviceName.split(",").length : 1);
-
-                  const latestComment = t.comments && t.comments.length > 0
-                    ? [...t.comments].sort((a: any, b: any) => new Date(b.at || b.createdAt).getTime() - new Date(a.at || a.createdAt).getTime())[0]?.text
-                    : (t as any).lastRemark || (t as any).remarks || "—";
-
-                  return (
-                    <tr key={t.id} style={getApplicationTypeStyle(t.applicationType)} className="hover:bg-slate-50/40 border-b border-slate-100 transition-colors">
-                      <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                      <td className="p-3 font-mono text-xs font-semibold text-blue-600">{t.applicationId || "—"}</td>
-                      <td className="p-3 font-mono font-semibold text-slate-900">
-                        {formatDateDDMMYYYY(t.appointmentDate)}
-                      </td>
-                      <td className="p-3 font-semibold text-indigo-600 text-center">{daysDiffStr}</td>
-                      <td className="p-3 font-semibold text-amber-600 text-center">{daysAfterApptStr}</td>
-                      <td className="p-3 font-mono font-bold text-slate-900">{t.vehicleNumber || t.vehicleId || "—"}</td>
-                      <td className="p-3 font-semibold text-slate-800">{t.clientName || t.ownerName || "—"}</td>
-                      <td className="p-3 text-center font-bold text-slate-800">{srvCount}</td>
-                      <td className="p-3 text-slate-700">{t.assignedEmployeeName || t.assignee || "Unassigned"}</td>
-                      <td className="p-3">
-                        {(() => {
-                          const sVal = t.status || t.taskStatus || "Completed";
-                          const normalized = sVal.toUpperCase() === "ON HOLD" ? "Onhold" : sVal;
-                          const statusVal = ["In RTO", "Inward", "Verify", "Approved", "Onhold"].includes(normalized) ? normalized : "In RTO";
-                          return (
-                            <select
-                              value={statusVal}
-                              onChange={(e) => handleVahaanStatusChange(t, e.target.value)}
-                              className={cn(
-                                "px-2 py-1 rounded text-xs font-bold border bg-white cursor-pointer",
-                                (() => {
-                                  const s = statusVal.toUpperCase();
-                                  switch (s) {
-                                    case "COMPLETED":
-                                      return "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    case "IN RTO":
-                                    case "RTO":
-                                      return "bg-blue-50 text-blue-700 border-blue-200";
-                                    case "INWARD":
-                                      return "bg-purple-50 text-purple-700 border-purple-200";
-                                    case "VERIFY":
-                                      return "bg-indigo-50 text-indigo-700 border-indigo-200";
-                                    case "APPROVED":
-                                      return "bg-teal-50 text-teal-700 border-teal-200";
-                                    case "ON HOLD":
-                                    case "ONHOLD":
-                                      return "bg-amber-50 text-amber-700 border-amber-200";
-                                    default:
-                                      return "bg-slate-50 text-slate-700 border-slate-200";
-                                  }
-                                })()
-                              )}
-                            >
-                              <option value="In RTO">In RTO</option>
-                              <option value="Inward">Inward</option>
-                              <option value="Verify">Verify</option>
-                              <option value="Approved">Approved</option>
-                              <option value="Onhold">Onhold</option>
-                            </select>
-                          );
-                        })()}
-                      </td>
-                      <td className="p-3 max-w-[150px] truncate text-slate-500 text-[11px]" title={latestComment}>
-                        {latestComment}
-                      </td>
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.pucExpiryDate)}</td>
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.taxExpiryDate)}</td>
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.fitnessExpiryDate)}</td>
-                      {activeSubModule !== "services" && <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.insuranceExpiryDate)}</td>}
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.nationalPermitExpiryDate)}</td>
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.gujaratPermitExpiryDate)}</td>
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.npAuthExpiryDate)}</td>
-                      <td className="p-3 font-mono text-xs text-slate-600">{formatDateDDMMYYYY(t.registrationRenewalExpiryDate)}</td>
-                      <td className="p-3 font-bold text-slate-900 font-mono">
-                        ₹{Number(t.amount || t.totalAmount || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="p-3 font-bold text-emerald-700 font-mono">
-                        ₹{Number(t.totalPaid || t.advanceAmount || 0).toLocaleString("en-IN")}
-                      </td>
-                       <td className="p-3">
-                         <ApplicationTypeBadge appType={t.applicationType} />
-                       </td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingService(t);
-                              setEditStatus(t.status || t.taskStatus || "Completed");
-                              setEditAssignee(t.assignee || "");
-                              setEditApptDate(t.appointmentDate ? formatDateDDMMYYYY(t.appointmentDate) : "");
-                              setEditRtoReceiptAmount(t.rtoReceiptAmount || t.rtoExpense || t.rtoReceiptNo || "");
-                              setEditAppId(t.applicationId || "");
-                              setEditAppType(t.applicationType || "Home");
-                              setEditRemarks(t.remarks || t.notes || "");
-                              setEditHoldReason(t.holdReason || "");
-                              setEditHoldDate(t.holdDate || "");
-                            }}
-                            title="Edit Service"
-                          >
-                            <Eye className="size-3.5 text-blue-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (!isAdmin) {
-                                toast.error("Access Denied: Employees cannot edit completed service records");
-                                return;
-                              }
-                              setEditingService(t);
-                              setEditStatus(t.status || t.taskStatus || "Completed");
-                              setEditAssignee(t.assignee || "");
-                              setEditApptDate(t.appointmentDate ? formatDateDDMMYYYY(t.appointmentDate) : "");
-                              setEditRtoReceiptAmount(t.rtoReceiptAmount || t.rtoExpense || t.rtoReceiptNo || "");
-                              setEditAppId(t.applicationId || "");
-                              setEditAppType(t.applicationType || "Home");
-                              setEditRemarks(t.remarks || t.notes || "");
-                              setEditHoldReason(t.holdReason || "");
-                              setEditHoldDate(t.holdDate || "");
-                            }}
-                            title="Edit Service"
-                          >
-                            <Pencil className="size-3.5 text-indigo-600" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
 
-    <ApplicationFullDetailsModal
-      open={appModalOpen}
-      onOpenChange={setAppModalOpen}
-      application={selectedAppModal}
-    />
-
-    {selectedRecord && (
-      <ClientDetailWorkspace
-        clientId={selectedRecord.id}
-        open={profileOpen}
-        onOpenChange={setProfileOpen}
+      <ApplicationFullDetailsModal
+        open={appModalOpen}
+        onOpenChange={setAppModalOpen}
+        application={selectedAppModal}
       />
-    )}
-    <AddClientWizardDialog
-      open={wizardOpen}
-      onOpenChange={setWizardOpen}
-      defaultServiceType={serviceType}
-      onSuccess={refreshData}
-    />
 
-    {/* Edit Completed Service Modal */}
-    {editingService && (
-      <Dialog open={!!editingService} onOpenChange={(open) => { if (!open) setEditingService(null); }}>
+      {selectedRecord && (
+        <ClientDetailWorkspace
+          clientId={selectedRecord.id}
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+        />
+      )}
+      <AddClientWizardDialog
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        defaultServiceType={serviceType}
+        onSuccess={refreshData}
+      />
+
+      {/* Edit Completed Service Modal */}
+      {editingService && (
+        <Dialog open={!!editingService} onOpenChange={(open) => { if (!open) setEditingService(null); }}>
+          <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">EDIT COMPLETED SERVICE</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-3 text-xs max-h-[60vh] overflow-y-auto">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full p-2 border rounded-lg bg-white"
+                >
+                  {activeSubModule === "licence"
+                    ? ["RTO", "PASS", "FAIL", "RETEST", "COMPLETED"].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))
+                    : activeSubModule === "services"
+                      ? ["In RTO", "Inward", "Verify", "Approved", "Onhold", "Completed"].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))
+                      : ["IN RTO", "INWARD", "VERIFY", "APPROVED", "ON HOLD", "COMPLETED"].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))
+                  }
+                </select>
+              </div>
+
+              {(editStatus.toUpperCase() === "ON HOLD" || editStatus.toUpperCase() === "ONHOLD") && (
+                <>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">Hold Reason</label>
+                    <Input
+                      type="text"
+                      value={editHoldReason}
+                      onChange={(e) => setEditHoldReason(e.target.value)}
+                      placeholder="Enter hold reason..."
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">Hold Date</label>
+                    <Input
+                      type="date"
+                      value={editHoldDate}
+                      onChange={(e) => setEditHoldDate(e.target.value)}
+                      className="w-full p-2 border rounded-lg"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Assigned Employee</label>
+                <select
+                  value={editAssignee}
+                  onChange={(e) => setEditAssignee(e.target.value)}
+                  className="w-full p-2 border rounded-lg bg-white"
+                >
+                  <option value="">Unassigned</option>
+                  {STAFF_USERS.map((s) => (
+                    <option key={s.username} value={s.username}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Appointment Date (DD/MM/YYYY)</label>
+                <Input
+                  type="text"
+                  placeholder="DD/MM/YYYY"
+                  value={editApptDate}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, "");
+                    if (val.length > 8) val = val.slice(0, 8);
+                    if (val.length > 4) {
+                      val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                    } else if (val.length > 2) {
+                      val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                    }
+                    setEditApptDate(val);
+                  }}
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">RTO Receipt Amount</label>
+                <Input
+                  type="number"
+                  value={editRtoReceiptAmount}
+                  onChange={(e) => setEditRtoReceiptAmount(e.target.value)}
+                  placeholder="Enter amount..."
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Application No.</label>
+                <Input
+                  type="text"
+                  value={editAppId}
+                  onChange={(e) => setEditAppId(e.target.value)}
+                  placeholder="APL-XXXX-XXXX"
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Application Type</label>
+                <select
+                  value={editAppType}
+                  onChange={(e) => setEditAppType(e.target.value)}
+                  className="w-full p-2 border rounded-lg bg-white"
+                >
+                  <option value="Home">Home</option>
+                  <option value="Faceless">Faceless</option>
+                  <option value="Out Of Bhavnagar">Out Of Bhavnagar</option>
+                  <option value="CNG">CNG</option>
+                  <option value="Out Of Bhavnagar to Bhavnagar">Out Of Bhavnagar to Bhavnagar</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">Remarks / Notes</label>
+                <Input
+                  type="text"
+                  value={editRemarks}
+                  onChange={(e) => setEditRemarks(e.target.value)}
+                  placeholder="Enter remarks..."
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditingService(null)} className="px-4 py-2 text-xs rounded-lg">
+                CANCEL
+              </Button>
+              <Button onClick={handleSaveServiceEdit} disabled={savingEdit} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
+                {savingEdit ? "SAVING..." : "SAVE CHANGES"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Vahaan Hold modal */}
+      <Dialog open={showVahaanHoldModal} onOpenChange={(open) => { if (!open) setShowVahaanHoldModal(false); }}>
         <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-slate-900">EDIT COMPLETED SERVICE</DialogTitle>
+            <DialogTitle className="text-base font-bold text-slate-900">VAHAAN HOLD DETAILS</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-3 text-xs max-h-[60vh] overflow-y-auto">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">Status</label>
-              <select
-                value={editStatus}
-                onChange={(e) => setEditStatus(e.target.value)}
-                className="w-full p-2 border rounded-lg bg-white"
-              >
-                {activeSubModule === "licence"
-                  ? ["RTO", "PASS", "FAIL", "RETEST", "COMPLETED"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))
-                  : activeSubModule === "services"
-                  ? ["In RTO", "Inward", "Verify", "Approved", "Onhold", "Completed"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))
-                  : ["IN RTO", "INWARD", "VERIFY", "APPROVED", "ON HOLD", "COMPLETED"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))
-                }
-              </select>
-            </div>
-
-            {(editStatus.toUpperCase() === "ON HOLD" || editStatus.toUpperCase() === "ONHOLD") && (
-              <>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">Hold Reason</label>
-                  <Input
-                    type="text"
-                    value={editHoldReason}
-                    onChange={(e) => setEditHoldReason(e.target.value)}
-                    placeholder="Enter hold reason..."
-                    className="w-full p-2 border rounded-lg"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">Hold Date</label>
-                  <Input
-                    type="date"
-                    value={editHoldDate}
-                    onChange={(e) => setEditHoldDate(e.target.value)}
-                    className="w-full p-2 border rounded-lg"
-                  />
-                </div>
-              </>
-            )}
-            
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">Assigned Employee</label>
-              <select
-                value={editAssignee}
-                onChange={(e) => setEditAssignee(e.target.value)}
-                className="w-full p-2 border rounded-lg bg-white"
-              >
-                <option value="">Unassigned</option>
-                {STAFF_USERS.map((s) => (
-                  <option key={s.username} value={s.username}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">Appointment Date (DD/MM/YYYY)</label>
+          <div className="space-y-4 py-4 text-xs">
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block">Reason</label>
               <Input
                 type="text"
-                placeholder="DD/MM/YYYY"
-                value={editApptDate}
-                onChange={(e) => {
-                  let val = e.target.value.replace(/\D/g, "");
-                  if (val.length > 8) val = val.slice(0, 8);
-                  if (val.length > 4) {
-                    val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
-                  } else if (val.length > 2) {
-                    val = `${val.slice(0, 2)}/${val.slice(2)}`;
-                  }
-                  setEditApptDate(val);
-                }}
+                value={vahaanHoldReason}
+                onChange={(e) => setVahaanHoldReason(e.target.value)}
+                placeholder="Enter reason..."
                 className="w-full p-2 border rounded-lg"
               />
             </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">RTO Receipt Amount</label>
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block">Date</label>
               <Input
-                type="number"
-                value={editRtoReceiptAmount}
-                onChange={(e) => setEditRtoReceiptAmount(e.target.value)}
-                placeholder="Enter amount..."
-                className="w-full p-2 border rounded-lg"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">Application No.</label>
-              <Input
-                type="text"
-                value={editAppId}
-                onChange={(e) => setEditAppId(e.target.value)}
-                placeholder="APL-XXXX-XXXX"
-                className="w-full p-2 border rounded-lg"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">Application Type</label>
-              <select
-                value={editAppType}
-                onChange={(e) => setEditAppType(e.target.value)}
-                className="w-full p-2 border rounded-lg bg-white"
-              >
-                <option value="Home">Home</option>
-                <option value="Faceless">Faceless</option>
-                <option value="Out Of Bhavnagar">Out Of Bhavnagar</option>
-                <option value="CNG">CNG</option>
-                <option value="Out Of Bhavnagar to Bhavnagar">Out Of Bhavnagar to Bhavnagar</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">Remarks / Notes</label>
-              <Input
-                type="text"
-                value={editRemarks}
-                onChange={(e) => setEditRemarks(e.target.value)}
-                placeholder="Enter remarks..."
+                type="date"
+                value={vahaanHoldDate}
+                onChange={(e) => setVahaanHoldDate(e.target.value)}
                 className="w-full p-2 border rounded-lg"
               />
             </div>
           </div>
           <DialogFooter className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setEditingService(null)} className="px-4 py-2 text-xs rounded-lg">
+            <Button variant="outline" onClick={() => setShowVahaanHoldModal(false)} className="px-4 py-2 text-xs rounded-lg">
               CANCEL
             </Button>
-            <Button onClick={handleSaveServiceEdit} disabled={savingEdit} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
-              {savingEdit ? "SAVING..." : "SAVE CHANGES"}
+            <Button onClick={handleSaveVahaanHold} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
+              SAVE
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    )}
 
-    {/* Vahaan Hold modal */}
-    <Dialog open={showVahaanHoldModal} onOpenChange={(open) => { if (!open) setShowVahaanHoldModal(false); }}>
-      <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
-        <DialogHeader>
-          <DialogTitle className="text-base font-bold text-slate-900">VAHAAN HOLD DETAILS</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 block">Reason</label>
-            <Input
-              type="text"
-              value={vahaanHoldReason}
-              onChange={(e) => setVahaanHoldReason(e.target.value)}
-              placeholder="Enter reason..."
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 block">Date</label>
-            <Input
-              type="date"
-              value={vahaanHoldDate}
-              onChange={(e) => setVahaanHoldDate(e.target.value)}
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-        </div>
-        <DialogFooter className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => setShowVahaanHoldModal(false)} className="px-4 py-2 text-xs rounded-lg">
-            CANCEL
-          </Button>
-          <Button onClick={handleSaveVahaanHold} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
-            SAVE
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    {/* RTO Expense Popup Modal */}
-    <Dialog open={showRtoExpenseModal} onOpenChange={(open) => { if (!open) handleCancelRtoExpense(); }}>
-      <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
-        <DialogHeader>
-          <DialogTitle className="text-base font-bold text-slate-900">
-            {pendingStatusChange?.isVahaan ? "RTO EXPENSE DETAILS" : "RTO EXPENSE & APPOINTMENT DETAILS"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4 text-xs">
-          {!pendingStatusChange?.isVahaan && (
+      {/* RTO Expense Popup Modal */}
+      <Dialog open={showRtoExpenseModal} onOpenChange={(open) => { if (!open) handleCancelRtoExpense(); }}>
+        <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              {pendingStatusChange?.isVahaan ? "RTO EXPENSE DETAILS" : "RTO EXPENSE & APPOINTMENT DETAILS"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-xs">
+            {!pendingStatusChange?.isVahaan && (
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block">New Appointment Date (DD/MM/YYYY)</label>
+                <Input
+                  type="text"
+                  value={rtoApptDate}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, "");
+                    if (val.length > 8) val = val.slice(0, 8);
+                    if (val.length > 4) {
+                      val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                    } else if (val.length > 2) {
+                      val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                    }
+                    setRtoApptDate(val);
+                  }}
+                  placeholder="DD/MM/YYYY"
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
-              <label className="font-bold text-slate-700 block">New Appointment Date (DD/MM/YYYY)</label>
+              <label className="font-bold text-slate-700 block">RTO Expense (Optional)</label>
+              <Input
+                type="number"
+                value={rtoExpenseValue === 0 ? "" : rtoExpenseValue}
+                onChange={(e) => setRtoExpenseValue(e.target.value === "" ? 0 : Number(e.target.value))}
+                placeholder="Enter RTO expense amount..."
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block">Who Paid?</label>
+              <select
+                value={rtoExpensePaidBy}
+                onChange={(e) => setRtoExpensePaidBy(e.target.value)}
+                className="w-full p-2 border rounded-lg bg-white"
+              >
+                <option value="">Select...</option>
+                <option value="Bhaylubha">Bhaylubha</option>
+                <option value="Shaktibhai">Shaktibhai</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={handleCancelRtoExpense} className="px-4 py-2 text-xs rounded-lg">
+              CANCEL
+            </Button>
+            <Button onClick={handleSaveRtoExpense} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
+              SAVE
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Licence PASS details Modal */}
+      <Dialog open={showLicencePassModal} onOpenChange={(open) => { if (!open) handleCancelLicencePass(); }}>
+        <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              ENTER LICENCE DETAILS FOR PASS STATUS
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-xs">
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block">LL / DL Number</label>
               <Input
                 type="text"
-                value={rtoApptDate}
+                value={licNo}
+                onChange={(e) => setLicNo(e.target.value)}
+                placeholder="Enter licence number..."
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block">Issue Date (DD/MM/YYYY)</label>
+              <Input
+                type="text"
+                value={licIssueDate}
                 onChange={(e) => {
                   let val = e.target.value.replace(/\D/g, "");
                   if (val.length > 8) val = val.slice(0, 8);
@@ -1645,103 +1760,42 @@ export function ServiceDashboard({
                   } else if (val.length > 2) {
                     val = `${val.slice(0, 2)}/${val.slice(2)}`;
                   }
-                  setRtoApptDate(val);
+                  setLicIssueDate(val);
                 }}
                 placeholder="DD/MM/YYYY"
                 className="w-full p-2 border rounded-lg"
               />
             </div>
-          )}
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 block">RTO Expense (Optional)</label>
-            <Input
-              type="number"
-              value={rtoExpenseValue === 0 ? "" : rtoExpenseValue}
-              onChange={(e) => setRtoExpenseValue(e.target.value === "" ? 0 : Number(e.target.value))}
-              placeholder="Enter RTO expense amount..."
-              className="w-full p-2 border rounded-lg"
-            />
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block">Expiry / Validity Date (DD/MM/YYYY)</label>
+              <Input
+                type="text"
+                value={licExpiryDate}
+                onChange={(e) => {
+                  let val = e.target.value.replace(/\D/g, "");
+                  if (val.length > 8) val = val.slice(0, 8);
+                  if (val.length > 4) {
+                    val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                  } else if (val.length > 2) {
+                    val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                  }
+                  setLicExpiryDate(val);
+                }}
+                placeholder="DD/MM/YYYY"
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
           </div>
-        </div>
-        <DialogFooter className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={handleCancelRtoExpense} className="px-4 py-2 text-xs rounded-lg">
-            CANCEL
-          </Button>
-          <Button onClick={handleSaveRtoExpense} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
-            SAVE
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    {/* Licence PASS details Modal */}
-    <Dialog open={showLicencePassModal} onOpenChange={(open) => { if (!open) handleCancelLicencePass(); }}>
-      <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
-        <DialogHeader>
-          <DialogTitle className="text-base font-bold text-slate-900">
-            ENTER LICENCE DETAILS FOR PASS STATUS
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 block">LL / DL Number</label>
-            <Input
-              type="text"
-              value={licNo}
-              onChange={(e) => setLicNo(e.target.value)}
-              placeholder="Enter licence number..."
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 block">Issue Date (DD/MM/YYYY)</label>
-            <Input
-              type="text"
-              value={licIssueDate}
-              onChange={(e) => {
-                let val = e.target.value.replace(/\D/g, "");
-                if (val.length > 8) val = val.slice(0, 8);
-                if (val.length > 4) {
-                  val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
-                } else if (val.length > 2) {
-                  val = `${val.slice(0, 2)}/${val.slice(2)}`;
-                }
-                setLicIssueDate(val);
-              }}
-              placeholder="DD/MM/YYYY"
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 block">Expiry / Validity Date (DD/MM/YYYY)</label>
-            <Input
-              type="text"
-              value={licExpiryDate}
-              onChange={(e) => {
-                let val = e.target.value.replace(/\D/g, "");
-                if (val.length > 8) val = val.slice(0, 8);
-                if (val.length > 4) {
-                  val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
-                } else if (val.length > 2) {
-                  val = `${val.slice(0, 2)}/${val.slice(2)}`;
-                }
-                setLicExpiryDate(val);
-              }}
-              placeholder="DD/MM/YYYY"
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-        </div>
-        <DialogFooter className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={handleCancelLicencePass} className="px-4 py-2 text-xs rounded-lg">
-            CANCEL
-          </Button>
-          <Button onClick={handleSaveLicencePass} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
-            SAVE
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={handleCancelLicencePass} className="px-4 py-2 text-xs rounded-lg">
+              CANCEL
+            </Button>
+            <Button onClick={handleSaveLicencePass} className="px-5 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold">
+              SAVE
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
