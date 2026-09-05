@@ -63,13 +63,13 @@ export const SUBMODULE_SERVICES: Record<SubModuleType, string[]> = {
     "Duplicate RC",
     "Change Address",
     "Registration Renewal",
-    "RC Particular",
-    "Vahaan RC Sudharo Vadhro",
+    "RC Particular(Screen Report)",
+    "Correction of vehical(Vahaan ma sudharo vadharo)",
     "Backlog",
     "Hypothecation Addition",
     "Hypothecation Terminate",
     "Hypothecation Continue",
-    "No Objection Certificate",
+    "No Objection Certificate(Issue Other State)",
     "Fitness Renewal RTO",
     "Fitness Renewal ATS",
     "Duplicate Fitness Certificate",
@@ -450,7 +450,7 @@ function TargetsPage() {
                 const targetVal = target.target;
                 const remainingVal = Math.max(0, targetVal - completedVal);
                 const percent = targetVal > 0 ? Math.round((completedVal / targetVal) * 100) : 0;
-                
+
                 let statusBadge = "Not Started";
                 let statusColor = "bg-gray-100 text-gray-700";
                 if (targetVal > 0) {
