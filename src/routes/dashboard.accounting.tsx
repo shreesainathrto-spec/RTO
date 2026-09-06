@@ -150,6 +150,8 @@ function AccountingDashboardPage() {
   // Office Expense filters
   const [filterExpenseStartDate, setFilterExpenseStartDate] = useState("");
   const [filterExpenseEndDate, setFilterExpenseEndDate] = useState("");
+  const [filterExpenseSpecificDate, setFilterExpenseSpecificDate] = useState("");
+  const [expenseDateFilterType, setExpenseDateFilterType] = useState<"all" | "today" | "specific" | "range">("all");
   const [filterExpenseCategory, setFilterExpenseCategory] = useState("all");
   const [approving, setApproving] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FinanceRecord | null>(null);
@@ -1670,8 +1672,18 @@ function AccountingDashboardPage() {
   const filteredOfficeExpenses = useMemo(() => {
     return officeExpenses.filter((exp) => {
       const matchCategory = filterExpenseCategory === "all" || exp.category === filterExpenseCategory;
-      const matchStart = !filterExpenseStartDate || exp.expenseDate >= filterExpenseStartDate;
-      const matchEnd = !filterExpenseEndDate || exp.expenseDate <= filterExpenseEndDate;
+
+      let matchDate = true;
+      if (expenseDateFilterType === "today") {
+        const today = new Date().toISOString().slice(0, 10);
+        matchDate = exp.expenseDate === today;
+      } else if (expenseDateFilterType === "specific") {
+        matchDate = !filterExpenseSpecificDate || exp.expenseDate === filterExpenseSpecificDate;
+      } else if (expenseDateFilterType === "range") {
+        const matchStart = !filterExpenseStartDate || exp.expenseDate >= filterExpenseStartDate;
+        const matchEnd = !filterExpenseEndDate || exp.expenseDate <= filterExpenseEndDate;
+        matchDate = matchStart && matchEnd;
+      }
 
       const term = searchTerm.toLowerCase();
       const matchSearch =
@@ -1682,9 +1694,9 @@ function AccountingDashboardPage() {
         (exp.paidByEmployee || "").toLowerCase().includes(term) ||
         (exp.createdBy || "").toLowerCase().includes(term);
 
-      return matchCategory && matchStart && matchEnd && matchSearch;
+      return matchCategory && matchDate && matchSearch;
     });
-  }, [officeExpenses, filterExpenseCategory, filterExpenseStartDate, filterExpenseEndDate, searchTerm]);
+  }, [officeExpenses, filterExpenseCategory, expenseDateFilterType, filterExpenseSpecificDate, filterExpenseStartDate, filterExpenseEndDate, searchTerm]);
 
   const handleSaveOfficeExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2683,8 +2695,8 @@ function AccountingDashboardPage() {
         {activeTab === "expense_profit" && isAdministrator && (
           <div className="space-y-4">
             {/* Filter & Actions Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+              <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase">Category</Label>
                   <select
@@ -2699,38 +2711,68 @@ function AccountingDashboardPage() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Start Date</Label>
-                  <Input
-                    type="date"
-                    value={filterExpenseStartDate}
-                    onChange={(e) => setFilterExpenseStartDate(e.target.value)}
-                    className="h-9 text-xs border rounded-xl px-3 bg-slate-50 w-36"
-                  />
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Date Filter</Label>
+                  <select
+                    value={expenseDateFilterType}
+                    onChange={(e) => setExpenseDateFilterType(e.target.value as any)}
+                    className="h-9 text-xs border rounded-xl px-3 bg-slate-50 focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Daily (Today)</option>
+                    <option value="specific">Specific Date</option>
+                    <option value="range">Date Range</option>
+                  </select>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase">End Date</Label>
-                  <Input
-                    type="date"
-                    value={filterExpenseEndDate}
-                    onChange={(e) => setFilterExpenseEndDate(e.target.value)}
-                    className="h-9 text-xs border rounded-xl px-3 bg-slate-50 w-36"
-                  />
-                </div>
-                {(filterExpenseCategory !== "all" || filterExpenseStartDate || filterExpenseEndDate) && (
+                {expenseDateFilterType === "specific" && (
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase">Select Date</Label>
+                    <Input
+                      type="date"
+                      value={filterExpenseSpecificDate}
+                      onChange={(e) => setFilterExpenseSpecificDate(e.target.value)}
+                      className="h-9 text-xs border rounded-xl px-3 bg-slate-50 w-36"
+                    />
+                  </div>
+                )}
+                {expenseDateFilterType === "range" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={filterExpenseStartDate}
+                        onChange={(e) => setFilterExpenseStartDate(e.target.value)}
+                        className="h-9 text-xs border rounded-xl px-3 bg-slate-50 w-36"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-slate-400 uppercase">End Date</Label>
+                      <Input
+                        type="date"
+                        value={filterExpenseEndDate}
+                        onChange={(e) => setFilterExpenseEndDate(e.target.value)}
+                        className="h-9 text-xs border rounded-xl px-3 bg-slate-50 w-36"
+                      />
+                    </div>
+                  </>
+                )}
+                {(filterExpenseCategory !== "all" || expenseDateFilterType !== "all") && (
                   <Button
                     variant="ghost"
                     onClick={() => {
                       setFilterExpenseCategory("all");
+                      setExpenseDateFilterType("all");
                       setFilterExpenseStartDate("");
                       setFilterExpenseEndDate("");
+                      setFilterExpenseSpecificDate("");
                     }}
-                    className="text-xs text-rose-600 hover:text-rose-800 font-bold self-end h-9 mt-4"
+                    className="text-xs text-rose-600 hover:text-rose-800 font-bold h-9"
                   >
                     Clear Filters
                   </Button>
                 )}
               </div>
-              <div className="flex items-center gap-2 self-end md:self-center">
+              <div className="flex items-center gap-2 self-end md:self-auto mb-0.5">
                 <Button
                   onClick={() => {
                     setEditingExpense(null);
