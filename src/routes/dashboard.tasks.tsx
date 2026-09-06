@@ -1002,6 +1002,8 @@ function TasksPage() {
   const [vahaanCompleteTask, setVahaanCompleteTask] = useState<Task | null>(null);
   const [vahaanRtoReceiptNo, setVahaanRtoReceiptNo] = useState("");
   const [vahaanEChallanAmount, setVahaanEChallanAmount] = useState("");
+  const [vahaanChallanQty, setVahaanChallanQty] = useState("");
+  const [vahaanChallanAmount, setVahaanChallanAmount] = useState("");
   const [vahaanAppointmentDate, setVahaanAppointmentDate] = useState("");
 
   const handleSaveVahaanHold = async () => {
@@ -1055,6 +1057,8 @@ function TasksPage() {
       const appDocId = (vahaanCompleteTask as any).applicationDocId || vahaanCompleteTask.recordId || vahaanCompleteTask.id.replace("task-app-", "");
       const rtoReceiptAmountVal = parseFloat(vahaanRtoReceiptNo.trim()) || 0;
       const eChallanAmountVal = parseFloat(vahaanEChallanAmount.trim()) || 0;
+      const challanQtyVal = parseInt(vahaanChallanQty.trim()) || 0;
+      const challanAmountVal = parseFloat(vahaanChallanAmount.trim()) || 0;
 
       let appData: any = {};
       if (appDocId) {
@@ -1086,6 +1090,8 @@ function TasksPage() {
         rtoReceiptNo: String(rtoReceiptAmountVal),
         eChallanAmount: eChallanAmountVal,
         rtoExpense: rtoReceiptAmountVal + eChallanAmountVal,
+        challanQty: challanQtyVal,
+        challanAmount: challanAmountVal,
         updatedAt: new Date().toISOString(),
         createdAt: vahaanCompleteTask.createdAt || appData.createdAt || new Date().toISOString(),
         
@@ -1128,6 +1134,8 @@ function TasksPage() {
           rtoReceipt: rtoReceiptAmountVal,
           rtoExpense: rtoReceiptAmountVal + eChallanAmountVal,
           eChallanAmount: eChallanAmountVal,
+          challanQty: challanQtyVal,
+          challanAmount: challanAmountVal,
           employeeName: vahaanCompleteTask.assignee || vahaanCompleteTask.assignedEmployeeName
         }).catch(console.error);
       }
@@ -1150,6 +1158,8 @@ function TasksPage() {
       setVahaanCompleteTask(null);
       setVahaanRtoReceiptNo("");
       setVahaanEChallanAmount("");
+      setVahaanChallanQty("");
+      setVahaanChallanAmount("");
       setVahaanAppointmentDate("");
     } catch (err: any) {
       console.error(err);
@@ -1168,6 +1178,8 @@ function TasksPage() {
   const [completeAppointmentDate, setCompleteAppointmentDate] = useState("");
   const [completeRtoExpense, setCompleteRtoExpense] = useState<string>("");
   const [completeEChallanAmount, setCompleteEChallanAmount] = useState<string>("");
+  const [completeChallanQty, setCompleteChallanQty] = useState<string>("");
+  const [completeChallanAmount, setCompleteChallanAmount] = useState<string>("");
   const [completeRemarks, setCompleteRemarks] = useState("");
   const [completeNewDob, setCompleteNewDob] = useState("");
   const [completeApplicationId, setCompleteApplicationId] = useState("");
@@ -1203,6 +1215,8 @@ function TasksPage() {
       setCompleteAppointmentDate(task.appointmentDate || "");
       setCompleteRtoExpense(task.rtoExpense ? String(task.rtoExpense) : "");
       setCompleteEChallanAmount((task as any).eChallanAmount ? String((task as any).eChallanAmount) : "");
+      setCompleteChallanQty((task as any).challanQty ? String((task as any).challanQty) : "");
+      setCompleteChallanAmount((task as any).challanAmount ? String((task as any).challanAmount) : "");
       setCompleteRemarks(task.remarks || "");
       setCompleteApplicationId(task.applicationId || "");
       setCompleteApplicationType(task.applicationType || "Home");
@@ -1271,6 +1285,8 @@ function TasksPage() {
       }
       const expNum = parseFloat(completeRtoExpense) || 0;
       const eChallanNum = parseFloat(completeEChallanAmount) || 0;
+      const challanQtyNum = parseInt(completeChallanQty) || 0;
+      const challanAmountNum = parseFloat(completeChallanAmount) || 0;
       const appDocId = (completeModalTask as any).applicationDocId || completeModalTask.recordId || completeModalTask.id.replace("task-app-", "");
 
       let appData: any = {};
@@ -1291,6 +1307,8 @@ function TasksPage() {
         if (accSnap.exists()) {
           accData = accSnap.data();
           totalCharges = Number(accData.totalCharges) || 0;
+          // Add challanAmount to totalCharges
+          totalCharges = totalCharges + challanAmountNum;
           advancePaid = Number(accData.advancePaid) || 0;
           rtoExpense = Number(accData.rtoExpense) || 0;
         } else {
@@ -1335,6 +1353,8 @@ function TasksPage() {
         rtoReceiptNo: String(expNum),
         eChallanAmount: eChallanNum,
         rtoExpense: expNum + eChallanNum,
+        challanQty: challanQtyNum,
+        challanAmount: challanAmountNum,
         updatedAt: new Date().toISOString(),
         createdAt: completeModalTask.createdAt || appData.createdAt || new Date().toISOString(),
         remarks: completeRemarks.trim(),
@@ -1404,6 +1424,8 @@ function TasksPage() {
       setCompleteAppointmentDate("");
       setCompleteRtoExpense("");
       setCompleteEChallanAmount("");
+      setCompleteChallanQty("");
+      setCompleteChallanAmount("");
       setCompleteRemarks("");
       setCompleteNewDob("");
     } catch (err: any) {
@@ -2055,6 +2077,32 @@ function TasksPage() {
                 <Label>E-Challan Amount</Label>
                 <Input type="number" placeholder="₹ 0" value={vahaanEChallanAmount} onChange={(e) => setVahaanEChallanAmount(e.target.value)} />
               </div>
+              <div className="grid grid-cols-2 gap-3 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Quantity</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 4"
+                    min={0}
+                    value={vahaanChallanQty}
+                    onChange={(e) => setVahaanChallanQty(e.target.value)}
+                    className="bg-white font-medium text-slate-900"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Amount (added to total)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium">₹</span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={vahaanChallanAmount}
+                      onChange={(e) => setVahaanChallanAmount(e.target.value)}
+                      className="pl-8 bg-white font-medium text-slate-900"
+                    />
+                  </div>
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label>Appointment Date (DD/MM/YYYY) *</Label>
                 <Input
@@ -2196,6 +2244,33 @@ function TasksPage() {
                     onChange={(e) => setCompleteEChallanAmount(e.target.value)}
                     className="pl-8 bg-slate-50 font-medium text-slate-900"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Quantity</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 4"
+                    min={0}
+                    value={completeChallanQty}
+                    onChange={(e) => setCompleteChallanQty(e.target.value)}
+                    className="bg-white font-medium text-slate-900"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Amount (added to total)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium">₹</span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={completeChallanAmount}
+                      onChange={(e) => setCompleteChallanAmount(e.target.value)}
+                      className="pl-8 bg-white font-medium text-slate-900"
+                    />
+                  </div>
                 </div>
               </div>
 

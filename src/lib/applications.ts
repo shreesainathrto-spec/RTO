@@ -105,6 +105,8 @@ export async function syncAccountingRecord(
     rtoExpense?: number;
     rtoReceipt?: number;
     eChallanAmount?: number;
+    challanQty?: number;
+    challanAmount?: number;
     employeeName?: string;
     applicationId?: string;
     vehicleNumber?: string;
@@ -134,6 +136,10 @@ export async function syncAccountingRecord(
   // Resolve E-Challan Amount
   const eChallanAmount = Number(updates.eChallanAmount ?? accData.eChallanAmount ?? appData.eChallanAmount ?? 0);
 
+  // Resolve Challan fields
+  const challanQty = Number(updates.challanQty ?? accData.challanQty ?? appData.challanQty ?? 0);
+  const challanAmount = Number(updates.challanAmount ?? accData.challanAmount ?? appData.challanAmount ?? 0);
+
   // Resolve RTO Receipt
   const rtoReceipt = Number(updates.rtoReceipt ?? accData.rtoReceipt ?? accData.rtoReceiptAmount ?? appData.rtoReceiptAmount ?? 0);
 
@@ -154,6 +160,8 @@ export async function syncAccountingRecord(
     outstanding,
     rtoExpense,
     eChallanAmount,
+    challanQty,
+    challanAmount,
     profit,
     updatedAt: new Date().toISOString(),
   };
