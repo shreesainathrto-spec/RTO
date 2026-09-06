@@ -272,6 +272,7 @@ function AccountingDashboardPage() {
       invoicesCount: number;
       rtoReceipt: number;
       rtoExpense: number;
+      totalEChallan: number;
       profit: number;
     }>();
 
@@ -290,6 +291,7 @@ function AccountingDashboardPage() {
         invoicesCount: 0,
         rtoReceipt: 0,
         rtoExpense: 0,
+        totalEChallan: 0,
         profit: 0,
       });
     });
@@ -311,6 +313,7 @@ function AccountingDashboardPage() {
           invoicesCount: 0,
           rtoReceipt: 0,
           rtoExpense: 0,
+          totalEChallan: 0,
           profit: 0,
         };
         summariesMap.set(r.clientId, s);
@@ -443,6 +446,7 @@ function AccountingDashboardPage() {
         invoicesCount: 1,
         rtoReceipt: rtoReceipt,
         rtoExpense: rtoExpense,
+        totalEChallan: acc?.eChallanAmount ?? app.eChallanAmount ?? 0,
         profit: profit,
       });
     });
@@ -479,6 +483,7 @@ function AccountingDashboardPage() {
         invoicesCount: 1,
         rtoReceipt: 0,
         rtoExpense: fuelExpense + generalExpense,
+        totalEChallan: 0,
         profit: remFee - (fuelExpense + generalExpense),
       });
     });
@@ -557,6 +562,7 @@ function AccountingDashboardPage() {
           totalAmount: 0,
           totalReceived: 0,
           totalOutstanding: 0,
+          totalEChallan: 0,
           collectionDate: colDate,
           askBhaylubha: false,
           assignedEmployee: s.assignedStaff || client?.assignee || "—",
@@ -569,6 +575,7 @@ function AccountingDashboardPage() {
       group.totalAmount += amt;
       group.totalReceived += rec;
       group.totalOutstanding += bal;
+      group.totalEChallan += (s as any).eChallanAmount || 0;
 
       if (s.askBhaylubha) group.askBhaylubha = true;
       if (s.invoiceNumber) {
@@ -588,6 +595,7 @@ function AccountingDashboardPage() {
         outstanding: bal,
         status: s.taskStatus || "Not Started",
         dueDate: colDate,
+        eChallanAmount: (s as any).eChallanAmount || 0,
       });
     });
 
@@ -629,6 +637,7 @@ function AccountingDashboardPage() {
         rtoReceipt,
         outstanding,
         rtoExpense,
+        totalEChallan: group.totalEChallan || 0,
         profit,
         invoiceAmount: totalCharges,
         receivedAmount: advancePaid,
@@ -2311,9 +2320,9 @@ function AccountingDashboardPage() {
                   No collection records found.
                 </div>
               ) : (
-                <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-260px)]" style={{ transform: 'rotateX(180deg)' }}>
-                  <table className="w-full text-left border-collapse text-xs" style={{ transform: 'rotateX(180deg)' }}>
-                    <thead className="sticky bottom-0 z-10">
+                <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-260px)]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-10">
                       <tr className="border-b bg-slate-50 uppercase text-[9px] font-bold text-muted-foreground">
                         <th className="p-3 bg-slate-50">Client</th>
                         <th className="p-3 bg-slate-50">Vehicle Number</th>
@@ -2492,6 +2501,7 @@ function AccountingDashboardPage() {
                                             <span>Amount: <strong className="text-slate-900">₹{ser.amount.toLocaleString("en-IN")}</strong></span>
                                             <span>Received: <strong className="text-emerald-600">₹{ser.received.toLocaleString("en-IN")}</strong></span>
                                             <span>Outstanding: <strong className="text-rose-600">₹{ser.outstanding.toLocaleString("en-IN")}</strong></span>
+                                            {ser.eChallanAmount > 0 && <span>E-Challan: <strong className="text-amber-600">₹{ser.eChallanAmount.toLocaleString("en-IN")}</strong></span>}
                                           </div>
                                         </div>
                                       ))}
@@ -2504,6 +2514,7 @@ function AccountingDashboardPage() {
                                         <span className="text-blue-600">Receipt: ₹{(r.rtoReceipt ?? 0).toLocaleString("en-IN")}</span>
                                         <span className="text-rose-600">Outstanding: ₹{(r.outstanding ?? r.balanceAmount ?? 0).toLocaleString("en-IN")}</span>
                                         <span className="text-amber-600">Expense: ₹{(r.rtoExpense ?? 0).toLocaleString("en-IN")}</span>
+                                        {r.totalEChallan > 0 && <span className="text-orange-600">E-Challan: ₹{r.totalEChallan.toLocaleString("en-IN")}</span>}
                                         {isAdmin && <span className={Number(r.profit ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"}>Profit: ₹{Number(r.profit ?? 0).toLocaleString("en-IN")}</span>}
                                       </div>
                                     </div>

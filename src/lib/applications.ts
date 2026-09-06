@@ -40,6 +40,8 @@ export interface AccountingRecord {
   rtoReceipt?: number;
   outstanding?: number;
   rtoExpense?: number;
+  eChallanAmount?: number;
+  rtoReceiptAmount?: number;
   profit?: number;
   taskId?: string;
   employeeId?: string;
@@ -102,6 +104,7 @@ export async function syncAccountingRecord(
   updates: {
     rtoExpense?: number;
     rtoReceipt?: number;
+    eChallanAmount?: number;
     employeeName?: string;
     applicationId?: string;
     vehicleNumber?: string;
@@ -128,6 +131,9 @@ export async function syncAccountingRecord(
   // Resolve RTO Expense
   const rtoExpense = Number(updates.rtoExpense ?? accData.rtoExpense ?? appData.rtoExpense ?? 0);
 
+  // Resolve E-Challan Amount
+  const eChallanAmount = Number(updates.eChallanAmount ?? accData.eChallanAmount ?? appData.eChallanAmount ?? 0);
+
   // Resolve RTO Receipt
   const rtoReceipt = Number(updates.rtoReceipt ?? accData.rtoReceipt ?? accData.rtoReceiptAmount ?? appData.rtoReceiptAmount ?? 0);
 
@@ -147,6 +153,7 @@ export async function syncAccountingRecord(
     rtoReceiptAmount: rtoReceipt,
     outstanding,
     rtoExpense,
+    eChallanAmount,
     profit,
     updatedAt: new Date().toISOString(),
   };

@@ -1001,6 +1001,7 @@ function TasksPage() {
   const [showVahaanCompleteModal, setShowVahaanCompleteModal] = useState(false);
   const [vahaanCompleteTask, setVahaanCompleteTask] = useState<Task | null>(null);
   const [vahaanRtoReceiptNo, setVahaanRtoReceiptNo] = useState("");
+  const [vahaanEChallanAmount, setVahaanEChallanAmount] = useState("");
   const [vahaanAppointmentDate, setVahaanAppointmentDate] = useState("");
 
   const handleSaveVahaanHold = async () => {
@@ -1053,6 +1054,7 @@ function TasksPage() {
     try {
       const appDocId = (vahaanCompleteTask as any).applicationDocId || vahaanCompleteTask.recordId || vahaanCompleteTask.id.replace("task-app-", "");
       const rtoReceiptAmountVal = parseFloat(vahaanRtoReceiptNo.trim()) || 0;
+      const eChallanAmountVal = parseFloat(vahaanEChallanAmount.trim()) || 0;
 
       let appData: any = {};
       if (appDocId) {
@@ -1082,7 +1084,8 @@ function TasksPage() {
         appointmentDate: vahaanAppointmentDate,
         rtoReceiptAmount: rtoReceiptAmountVal,
         rtoReceiptNo: String(rtoReceiptAmountVal),
-        rtoExpense: rtoReceiptAmountVal,
+        eChallanAmount: eChallanAmountVal,
+        rtoExpense: rtoReceiptAmountVal + eChallanAmountVal,
         updatedAt: new Date().toISOString(),
         createdAt: vahaanCompleteTask.createdAt || appData.createdAt || new Date().toISOString(),
         
@@ -1123,6 +1126,8 @@ function TasksPage() {
       if (appDocId) {
         await syncAccountingRecord(appDocId, {
           rtoReceipt: rtoReceiptAmountVal,
+          rtoExpense: rtoReceiptAmountVal + eChallanAmountVal,
+          eChallanAmount: eChallanAmountVal,
           employeeName: vahaanCompleteTask.assignee || vahaanCompleteTask.assignedEmployeeName
         }).catch(console.error);
       }
@@ -1144,6 +1149,7 @@ function TasksPage() {
       setShowVahaanCompleteModal(false);
       setVahaanCompleteTask(null);
       setVahaanRtoReceiptNo("");
+      setVahaanEChallanAmount("");
       setVahaanAppointmentDate("");
     } catch (err: any) {
       console.error(err);
@@ -1161,6 +1167,7 @@ function TasksPage() {
   const [completeModalTask, setCompleteModalTask] = useState<Task | null>(null);
   const [completeAppointmentDate, setCompleteAppointmentDate] = useState("");
   const [completeRtoExpense, setCompleteRtoExpense] = useState<string>("");
+  const [completeEChallanAmount, setCompleteEChallanAmount] = useState<string>("");
   const [completeRemarks, setCompleteRemarks] = useState("");
   const [completeNewDob, setCompleteNewDob] = useState("");
   const [completeApplicationId, setCompleteApplicationId] = useState("");
@@ -1193,8 +1200,9 @@ function TasksPage() {
     }
     if (sUpper === "COMPLETED") {
       setCompleteModalTask(task);
-      setCompleteAppointmentDate(task.appointmentDate || new Date().toISOString().split("T")[0]);
+      setCompleteAppointmentDate(task.appointmentDate || "");
       setCompleteRtoExpense(task.rtoExpense ? String(task.rtoExpense) : "");
+      setCompleteEChallanAmount((task as any).eChallanAmount ? String((task as any).eChallanAmount) : "");
       setCompleteRemarks(task.remarks || "");
       setCompleteApplicationId(task.applicationId || "");
       setCompleteApplicationType(task.applicationType || "Home");
@@ -1262,6 +1270,7 @@ function TasksPage() {
         throw new Error("New Date of Birth must be in DD/MM/YYYY format.");
       }
       const expNum = parseFloat(completeRtoExpense) || 0;
+      const eChallanNum = parseFloat(completeEChallanAmount) || 0;
       const appDocId = (completeModalTask as any).applicationDocId || completeModalTask.recordId || completeModalTask.id.replace("task-app-", "");
 
       let appData: any = {};
@@ -1304,6 +1313,8 @@ function TasksPage() {
       if (appDocId) {
         await syncAccountingRecord(appDocId, {
           rtoReceipt: rtoReceipt,
+          rtoExpense: expNum + eChallanNum,
+          eChallanAmount: eChallanNum,
           employeeName: completeModalTask.assignedEmployeeName || completeModalTask.assignee,
           vehicleNumber: (completeModalTask as any).vehicleNumber,
           ownerName: (completeModalTask as any).ownerName || (completeModalTask as any).clientName
@@ -1322,7 +1333,8 @@ function TasksPage() {
         appointmentDate: completeAppointmentDate,
         rtoReceiptAmount: expNum,
         rtoReceiptNo: String(expNum),
-        rtoExpense: expNum,
+        eChallanAmount: eChallanNum,
+        rtoExpense: expNum + eChallanNum,
         updatedAt: new Date().toISOString(),
         createdAt: completeModalTask.createdAt || appData.createdAt || new Date().toISOString(),
         remarks: completeRemarks.trim(),
@@ -1391,6 +1403,7 @@ function TasksPage() {
       setCompleteModalTask(null);
       setCompleteAppointmentDate("");
       setCompleteRtoExpense("");
+      setCompleteEChallanAmount("");
       setCompleteRemarks("");
       setCompleteNewDob("");
     } catch (err: any) {
@@ -2039,6 +2052,10 @@ function TasksPage() {
                 <Input type="number" placeholder="₹ 5,000" value={vahaanRtoReceiptNo} onChange={(e) => setVahaanRtoReceiptNo(e.target.value)} />
               </div>
               <div className="space-y-1.5">
+                <Label>E-Challan Amount</Label>
+                <Input type="number" placeholder="₹ 0" value={vahaanEChallanAmount} onChange={(e) => setVahaanEChallanAmount(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
                 <Label>Appointment Date (DD/MM/YYYY) *</Label>
                 <Input
                   type="text"
@@ -2162,6 +2179,21 @@ function TasksPage() {
                     placeholder="Enter RTO Receipt Amount"
                     value={completeRtoExpense}
                     onChange={(e) => setCompleteRtoExpense(e.target.value)}
+                    className="pl-8 bg-slate-50 font-medium text-slate-900"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">
+                  E-CHALLAN AMOUNT
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
+                  <Input
+                    type="number"
+                    placeholder="Enter E-Challan Amount"
+                    value={completeEChallanAmount}
+                    onChange={(e) => setCompleteEChallanAmount(e.target.value)}
                     className="pl-8 bg-slate-50 font-medium text-slate-900"
                   />
                 </div>
