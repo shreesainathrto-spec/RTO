@@ -2077,32 +2077,6 @@ function TasksPage() {
                 <Label>E-Challan Amount</Label>
                 <Input type="number" placeholder="₹ 0" value={vahaanEChallanAmount} onChange={(e) => setVahaanEChallanAmount(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-3 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Quantity</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 4"
-                    min={0}
-                    value={vahaanChallanQty}
-                    onChange={(e) => setVahaanChallanQty(e.target.value)}
-                    className="bg-white font-medium text-slate-900"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Amount (added to total)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium">₹</span>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={vahaanChallanAmount}
-                      onChange={(e) => setVahaanChallanAmount(e.target.value)}
-                      className="pl-8 bg-white font-medium text-slate-900"
-                    />
-                  </div>
-                </div>
-              </div>
               <div className="space-y-1.5">
                 <Label>Appointment Date (DD/MM/YYYY) *</Label>
                 <Input
@@ -2244,33 +2218,6 @@ function TasksPage() {
                     onChange={(e) => setCompleteEChallanAmount(e.target.value)}
                     className="pl-8 bg-slate-50 font-medium text-slate-900"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Quantity</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 4"
-                    min={0}
-                    value={completeChallanQty}
-                    onChange={(e) => setCompleteChallanQty(e.target.value)}
-                    className="bg-white font-medium text-slate-900"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-orange-700">Challan Amount (added to total)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium">₹</span>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={completeChallanAmount}
-                      onChange={(e) => setCompleteChallanAmount(e.target.value)}
-                      className="pl-8 bg-white font-medium text-slate-900"
-                    />
-                  </div>
                 </div>
               </div>
 

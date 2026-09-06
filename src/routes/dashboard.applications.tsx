@@ -2230,6 +2230,8 @@ function ApplicationFormModal({
   const [dueDate, setDueDate] = useState(editingApp?.dueDate || "");
   const [priority, setPriority] = useState<"Low" | "Medium" | "High" | "Urgent">(editingApp?.priority || "Low");
   const [createTaskAuto, setCreateTaskAuto] = useState(editingApp?.createTaskAuto ?? true);
+  const [challanQty, setChallanQty] = useState<string>(editingApp?.challanQty ? String(editingApp.challanQty) : "");
+  const [challanAmount, setChallanAmount] = useState<string>(editingApp?.challanAmount ? String(editingApp.challanAmount) : "");
   const [assignedEmployee, setAssignedEmployee] = useState(editingApp?.assignedEmployeeName || "");
   const [activeEmployees, setActiveEmployees] = useState<{ id: string; name: string }[]>([]);
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
@@ -3294,6 +3296,8 @@ function ApplicationFormModal({
           dueDate,
           reminder,
           priority,
+          challanQty: parseInt(challanQty) || 0,
+          challanAmount: parseFloat(challanAmount) || 0,
           createTaskAuto,
           templateId: selectedTemplateId || undefined,
           documents: uploadedDocs,
@@ -5297,6 +5301,33 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="space-y-4 text-xs">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Quantity</label>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="e.g. 4"
+                        value={challanQty}
+                        onChange={(e) => setChallanQty(e.target.value)}
+                        className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Amount (added to total)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium text-xs">₹</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={challanAmount}
+                          onChange={(e) => setChallanAmount(e.target.value)}
+                          className="w-full pl-7 p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">
                       EMPLOYEE REMARKS
@@ -5818,6 +5849,33 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="space-y-4 text-xs">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Quantity</label>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="e.g. 4"
+                        value={challanQty}
+                        onChange={(e) => setChallanQty(e.target.value)}
+                        className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Amount (added to total)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium text-xs">₹</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={challanAmount}
+                          onChange={(e) => setChallanAmount(e.target.value)}
+                          className="w-full pl-7 p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">
                       EMPLOYEE REMARKS
