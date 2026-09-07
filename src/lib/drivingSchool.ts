@@ -205,9 +205,28 @@ export async function saveDrivingSchoolApplication(
           status: "Read",
           createdAt: now,
         })),
-        progress: 0,
-      });
       await setDoc(newTaskRef, taskPayload);
+
+      // Trigger task assignment notification to assigned employee
+      if (appData.assignedEmployee && appData.assignedEmployee !== "Unassigned") {
+        try {
+          const { sendTaskAssignmentNotification } = await import("./notifications");
+          await sendTaskAssignmentNotification({
+            taskId: newTaskRef.id,
+            title: `Driving Course - ${appData.studentName}`,
+            serviceName: "Driving Course",
+            vehicleNumber: appData.vehicleNumber || "",
+            applicationId: generatedAppId || finalId,
+            applicationDocId: finalId,
+            subModule: "driving_school",
+            assignee: appData.assignedEmployee,
+            assignedEmployeeName: appData.assignedEmployee,
+            assignedBy: session?.name || "System",
+          });
+        } catch (notifErr) {
+          console.warn("Failed to dispatch driving school task assignment notification:", notifErr);
+        }
+      }
     }
   } catch (taskErr) {
     console.error("Error generating driving school task:", taskErr);

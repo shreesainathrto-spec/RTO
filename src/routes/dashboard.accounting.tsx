@@ -2218,11 +2218,11 @@ function AccountingDashboardPage() {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="py-1.5 px-2.5 border rounded-md bg-white text-gray-700 font-semibold"
                 >
-                  <option value="all">બધા</option>
-                  <option value="Pending">બધા બકી</option>
-                  <option value="Partially Paid">થોડા બકી</option>
-                  <option value="Paid">કુલ જામ</option>
-                  <option value="Overdue">સમય મર્યાદા</option>
+                  <option value="all">All</option>
+                  <option value="Pending">Badha baki</option>
+                  <option value="Partially Paid">Thoda Baki</option>
+                  <option value="Paid">Total jama</option>
+                  <option value="Overdue">Time limit</option>
                 </select>
               </div>
             )}

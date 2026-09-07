@@ -31,6 +31,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Car,
+  Bell,
+  Check,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import { getSession, logout, isAuthReady, type StaffUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -41,6 +45,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { changeOwnPassword } from "@/lib/userService";
 import { toast } from "sonner";
+import {
+  subscribeUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  playNotificationSound,
+  type AppNotification,
+} from "@/lib/notifications";
+import { formatDateDDMMYYYY } from "@/lib/formatting";
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async () => {
@@ -87,6 +99,7 @@ const GROUPS: NavGroup[] = [
     heading: "Driving School",
     items: [
       { to: "/dashboard/driving-school/vehicles", label: "School Vehicles", icon: Car },
+      { to: "/dashboard/driving-school/expenses", label: "Vehicle Expenses", icon: DollarSign },
     ],
   },
   {
@@ -153,12 +166,67 @@ function DashboardLayout() {
     }
   };
 
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setUser(getSession());
     const handler = () => setUser(getSession());
     window.addEventListener("auth-change", handler);
     return () => window.removeEventListener("auth-change", handler);
   }, []);
+
+  // Subscribe to real-time notifications for current logged-in employee
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    const unsub = subscribeUserNotifications(user, (items, newArrivals) => {
+      setNotifications(items);
+      if (newArrivals > 0) {
+        playNotificationSound();
+        const latest = items.find((i) => !i.read);
+        if (latest) {
+          toast.info(latest.title, {
+            description: latest.message,
+          });
+        }
+      }
+    });
+
+    return () => unsub();
+  }, [user?.uid, user?.username, user?.employeeId, user?.name]);
+
+  // Close notifications dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifContainerRef.current && !notifContainerRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    if (notifOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [notifOpen]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleNotificationClick = async (item: AppNotification) => {
+    if (!item.read) {
+      await markNotificationAsRead(item.id);
+    }
+    setNotifOpen(false);
+    const subModuleParam = item.subModule && item.subModule !== "services" ? `?subModule=${item.subModule}` : "";
+    navigate({ to: `/dashboard/tasks${subModuleParam}` });
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsAsRead(user);
+  };
 
   // Restore scroll position when layout mounts or route changes
   useEffect(() => {
@@ -385,6 +453,116 @@ function DashboardLayout() {
               n.exact ? pathname === n.to : pathname === n.to || pathname.startsWith(n.to + "/"),
             )?.label ?? "Dashboard"}
           </h1>
+
+          <div className="ml-auto flex items-center gap-2">
+            {/* Notification Bell Dropdown */}
+            <div className="relative" ref={notifContainerRef}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="relative size-9 text-muted-foreground hover:text-foreground rounded-full"
+                title="Notifications"
+                aria-label="View task notifications"
+              >
+                <Bell className="size-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] px-1 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white ring-2 ring-background animate-pulse">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border bg-card text-card-foreground shadow-2xl z-50 overflow-hidden flex flex-col max-h-[480px] animate-in fade-in-50 zoom-in-95 duration-150">
+                  <div className="p-3 border-b bg-muted/40 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="size-4 text-primary" />
+                      <span className="font-semibold text-sm">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="text-[11px] font-medium bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 px-1.5 py-0.5 rounded-full">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="text-xs text-primary hover:underline font-medium flex items-center gap-1"
+                      >
+                        <Check className="size-3" /> Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="overflow-y-auto flex-1 divide-y divide-border">
+                    {notifications.length === 0 ? (
+                      <div className="py-10 px-4 text-center">
+                        <Bell className="size-8 mx-auto text-muted-foreground/30 mb-2" />
+                        <p className="text-xs font-medium text-muted-foreground">No notifications yet</p>
+                        <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                          Task assignments will appear here in real-time.
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((n) => {
+                        return (
+                          <div
+                            key={n.id}
+                            onClick={() => handleNotificationClick(n)}
+                            className={cn(
+                              "p-3 text-left transition-colors cursor-pointer hover:bg-muted/60 relative group flex gap-3 items-start",
+                              !n.read ? "bg-primary/5" : "bg-card"
+                            )}
+                          >
+                            <div className={cn(
+                              "size-2 rounded-full mt-1.5 shrink-0",
+                              !n.read ? "bg-primary" : "bg-transparent"
+                            )} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className={cn(
+                                  "text-xs truncate",
+                                  !n.read ? "font-semibold text-foreground" : "font-medium text-foreground/80"
+                                )}>
+                                  {n.title}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-1">
+                                  <Clock className="size-2.5" />
+                                  {formatDateDDMMYYYY(n.createdAt)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                {n.message}
+                              </p>
+                              {n.assignedBy && (
+                                <p className="text-[10px] text-muted-foreground/70 mt-1">
+                                  By: {n.assignedBy}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {notifications.length > 0 && (
+                    <div className="p-2 border-t bg-muted/20 text-center">
+                      <Link
+                        to="/dashboard/tasks"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1"
+                      >
+                        View all tasks <ExternalLink className="size-3" />
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </header>
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
           <Outlet />

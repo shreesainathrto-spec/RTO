@@ -626,6 +626,12 @@ function TasksPage() {
       const taskTitle = s.title || (isLicense ? `${s.serviceType || "License Service"} - ${clientName}` : `${s.serviceType || "Service"} - ${vehicleNo || "—"}`);
       const taskDesc = s.description || (isLicense ? `Client: ${clientName}. Status: ${s.taskStatus || s.status || "Pending"}. Notes: ${s.notes || s.remarks || "—"}` : `Vehicle: ${vehicleNo || "—"}. Status: ${s.taskStatus || s.status || "Pending"}. Remarks: ${s.remarks || "—"}`);
 
+      const rawStatus = (s.taskStatus || s.status || "").toUpperCase();
+      const isRecordCompleted = ["COMPLETED", "RTO", "IN RTO", "PASS", "FAIL", "RETEST", "APPROVED", "INWARD"].includes(rawStatus) || s.done === true;
+      if (isRecordCompleted) {
+        return null;
+      }
+
       return {
         id: s.id,
         title: taskTitle,
@@ -639,7 +645,7 @@ function TasksPage() {
           return (raw === "Assigned" ? "Read" : raw) as TaskStatus;
         })(),
         priority: (s.priority || "Medium") as TaskPriority,
-        done: s.taskStatus === "Completed",
+        done: s.taskStatus === "Completed" || s.done === true,
         createdAt: s.createdAt || s.startDate || new Date().toISOString(),
         createdBy: s.createdBy || "System",
         dueDate: s.dueDate || s.startDate || "",
@@ -681,6 +687,11 @@ function TasksPage() {
       const assignedEmp = app.assignedEmployeeName || "Unassigned";
 
       const taskId = `task-app-${app.id}`;
+      const appCurrentStep = app.licenseDetails?.currentStep || app.currentStep || 1;
+      const appStepAppts = app.licenseDetails?.stepAppointments || app.stepAppointments || {};
+      const appStepHist = app.licenseDetails?.stepHistory || app.stepHistory || {};
+      const appApptDate = appStepAppts[appCurrentStep] || app.appointmentDate || "";
+
       appTasks.push({
         id: taskId,
         taskId,
@@ -711,11 +722,14 @@ function TasksPage() {
         applicationType: app.subModule === "licence" ? "Licence" : app.applicationType || "Home",
         subModule: app.subModule || (app.licenseDetails ? "licence" : "services"),
         licenseDetails: app.licenseDetails,
+        currentStep: appCurrentStep,
+        stepAppointments: appStepAppts,
+        stepHistory: appStepHist,
         amount: app.amount || 0,
         totalPaid: app.totalPaid || 0,
         pendingAmount: typeof app.pendingAmount === "number" ? app.pendingAmount : Math.max(0, (app.amount || 0) - (app.totalPaid || 0)),
         paymentStatus: app.paymentStatus || (app.totalPaid >= app.amount && app.amount > 0 ? "Paid" : app.totalPaid > 0 ? "Partial" : "Pending"),
-        appointmentDate: app.appointmentDate || "",
+        appointmentDate: appApptDate,
         vehicleNumber: vehNo,
         mobileNumber: mobNo,
         phone: mobNo,
@@ -756,6 +770,11 @@ function TasksPage() {
 
       if (map.has(key)) {
         const existing = map.get(key)!;
+        const mergedCurrentStep = item.currentStep || (existing as any).currentStep || 1;
+        const mergedStepAppts = { ...((existing as any).stepAppointments || {}), ...(item.stepAppointments || {}) };
+        const mergedStepHist = { ...((existing as any).stepHistory || {}), ...(item.stepHistory || {}) };
+        const mergedApptDate = mergedStepAppts[mergedCurrentStep] || item.appointmentDate || existing.appointmentDate || "";
+
         const merged = {
           ...existing,
           ...item,
@@ -764,7 +783,10 @@ function TasksPage() {
           assignee: item.assignee || existing.assignee,
           assignedEmployeeName: item.assignedEmployeeName || existing.assignedEmployeeName,
           remarks: item.remarks || existing.remarks,
-          appointmentDate: item.appointmentDate || existing.appointmentDate,
+          currentStep: mergedCurrentStep,
+          stepAppointments: mergedStepAppts,
+          stepHistory: mergedStepHist,
+          appointmentDate: mergedApptDate,
           applicationId: item.applicationId || existing.applicationId,
           applicationType: item.applicationType || existing.applicationType,
           vehicleNumber: existing.vehicleNumber || item.vehicleNumber,
@@ -1341,10 +1363,12 @@ function TasksPage() {
 
       const subModule = completeModalTask.subModule || appData.subModule || (appData.licenseDetails ? "licence" : "services");
 
-      const serviceRef = doc(db, "registry_services_v2", completeModalTask.id);
+      const destServiceId = (completeModalTask as any).sourceTaskId || ((completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) ? completeModalTask.id : appDocId ? `service-${appDocId}` : completeModalTask.id);
+      const serviceRef = doc(db, "registry_services_v2", destServiceId);
       const serviceRecord = removeUndefined({
-        id: completeModalTask.id,
-        serviceId: completeModalTask.id,
+        id: destServiceId,
+        serviceId: destServiceId,
+        sourceTaskId: completeModalTask.id,
         status: "Completed",
         taskStatus: "Completed",
         done: true,
@@ -1417,7 +1441,13 @@ function TasksPage() {
       }
 
       const { deleteDoc } = await import("firebase/firestore");
-      await deleteDoc(doc(db, "registry_tasks", completeModalTask.id));
+      // Delete original task from Firestore tasks collection if exists
+      if (completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) {
+        await deleteDoc(doc(db, "registry_tasks", completeModalTask.id)).catch(() => {});
+      }
+      if ((completeModalTask as any).taskId && (completeModalTask as any).taskId !== completeModalTask.id && !(completeModalTask as any).taskId.startsWith("task-app-")) {
+        await deleteDoc(doc(db, "registry_tasks", (completeModalTask as any).taskId)).catch(() => {});
+      }
 
       toast.success("Task completed and transferred to Services!");
       setCompleteModalTask(null);
@@ -3946,6 +3976,8 @@ function TaskDetailsSheet({
     nextStep: number;
   } | null>(null);
 
+  const [sheetApptDate, setSheetApptDate] = useState("");
+
   const assignedEmp = useMemo(() => {
     return (
       employees.find(
@@ -3971,6 +4003,11 @@ function TaskDetailsSheet({
     setSelectedStatus(initialTask.status || "Read");
     setSheetApplicationId(initialTask.applicationId || "");
     setSheetApplicationType(initialTask.applicationType || "Home");
+    const initCurrentStep = (initialTask as any).currentStep || 1;
+    const initStepAppts = (initialTask as any).stepAppointments || {};
+    const initAppt = initStepAppts[initCurrentStep] || initialTask.appointmentDate || "";
+    setSheetApptDate(initAppt ? ensureYYYYMMDD(initAppt) : "");
+
     if (initialTask.dueDate) {
       const d = new Date(initialTask.dueDate);
       if (!isNaN(d.getTime())) {
@@ -3994,6 +4031,11 @@ function TaskDetailsSheet({
       setSelectedStatus(currentTask.status || "Read");
       setSheetApplicationId(currentTask.applicationId || "");
       setSheetApplicationType(currentTask.applicationType || "Home");
+      const cStep = (currentTask as any).currentStep || 1;
+      const stepAppts = (currentTask as any).stepAppointments || {};
+      const appt = stepAppts[cStep] || currentTask.appointmentDate || "";
+      setSheetApptDate(appt ? ensureYYYYMMDD(appt) : "");
+
       if (currentTask.dueDate) {
         const d = new Date(currentTask.dueDate);
         if (!isNaN(d.getTime())) {
@@ -4028,11 +4070,18 @@ function TaskDetailsSheet({
         s.id === base.id ||
         (s.vehicleId === base.vehicleId && s.serviceType === base.serviceName),
     );
+    const cStep = (base as any).currentStep || 1;
+    const stepAppts = (base as any).stepAppointments || {};
+    const stepAppt = stepAppts[cStep] || base.appointmentDate || svc?.appointmentDate || "";
+
     return {
       ...base,
       applicationId: base.applicationId || svc?.applicationId || "",
       applicationType: base.applicationType || svc?.applicationType || "",
-      appointmentDate: base.appointmentDate || svc?.appointmentDate || "",
+      appointmentDate: stepAppt,
+      currentStep: cStep,
+      stepAppointments: stepAppts,
+      stepHistory: (base as any).stepHistory || {},
     };
   }, [liveTask, initialTask, v2Services]);
 
@@ -4053,23 +4102,45 @@ function TaskDetailsSheet({
         return;
       }
       
+      const isLicenceTask = (activeTask.applicationType === "Licence" || (activeTask as any).subModule === "licence");
+      const currentStep = (activeTask as any).currentStep || 1;
+      let formattedApptDate = sheetApptDate ? formatDateDDMMYYYY(sheetApptDate) : "";
+
+      const existingStepAppts = (activeTask as any).stepAppointments || {};
+      const updatedStepAppts = {
+        ...existingStepAppts,
+        [currentStep]: formattedApptDate || existingStepAppts[currentStep] || "",
+      };
+
       const updates: any = {
         status: selectedStatus,
         done: selectedStatus === "Completed" || selectedStatus === "COMPLETED",
         applicationId: sheetApplicationId.trim(),
         applicationType: sheetApplicationType,
         licenseDetails: licenseForm || {},
+        currentStep: currentStep,
+        stepAppointments: updatedStepAppts,
       };
+
+      if (formattedApptDate) {
+        updates.appointmentDate = formattedApptDate;
+      }
 
       const appDocId = (activeTask as any).applicationDocId || activeTask.recordId || activeTask.id.replace("task-app-", "");
       if (appDocId) {
         const appRef = doc(db, "registry_applications_v1", appDocId);
-        await setDoc(appRef, {
+        const appUpdates: any = {
           applicationId: sheetApplicationId.trim(),
           applicationType: sheetApplicationType,
           licenseDetails: licenseForm || {},
+          "licenseDetails.currentStep": currentStep,
+          "licenseDetails.stepAppointments": updatedStepAppts,
           updatedAt: new Date().toISOString(),
-        }, { merge: true }).catch(() => {});
+        };
+        if (formattedApptDate) {
+          appUpdates.appointmentDate = formattedApptDate;
+        }
+        await setDoc(appRef, appUpdates, { merge: true }).catch(() => {});
         await syncAccountingRecord(appDocId, {
           applicationId: sheetApplicationId.trim()
         }).catch(console.error);
@@ -4093,7 +4164,7 @@ function TaskDetailsSheet({
         setRemarkInput("");
       }
       
-      await updateTask(activeTask.id, updates, actor, "Progress updated");
+      await updateTask(activeTask.id, updates, actor, isLicenceTask && formattedApptDate ? `Updated Step ${currentStep} Appointment Date: ${formattedApptDate}` : "Progress updated");
       toast.success("Progress saved successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to save progress");
@@ -4113,14 +4184,15 @@ function TaskDetailsSheet({
           currentStep,
           nextStep,
         });
-        setLicenseStepDate(new Date().toISOString().slice(0, 10));
+        const existingNextAppt = (activeTask as any).stepAppointments?.[nextStep] || "";
+        setLicenseStepDate(existingNextAppt ? ensureYYYYMMDD(existingNextAppt) : new Date().toISOString().slice(0, 10));
         setShowLicenseStepModal(true);
         return;
       }
 
       const now = new Date().toISOString();
       const statusVal = activeSubModule === "services" ? "COMPLETED" : "Completed";
-      const updates = {
+      const updates: any = {
         status: statusVal as TaskStatus,
         done: true,
         completedAt: now,
@@ -4128,6 +4200,20 @@ function TaskDetailsSheet({
         completedBy: actor,
       };
       
+      if (isLicenceTask) {
+        const existingHistory = (activeTask as any).stepHistory || {};
+        updates.stepHistory = {
+          ...existingHistory,
+          [currentStep]: {
+            stepNumber: currentStep,
+            completedAt: now,
+            completedBy: actor,
+            appointmentDate: activeTask.appointmentDate || "",
+            status: "Completed",
+          }
+        };
+      }
+
       if (activeSubModule === "services") {
         setVahaanCompleteTask(activeTask);
         setVahaanRtoReceiptNo((activeTask as any).rtoReceiptNo || "");
@@ -4141,7 +4227,7 @@ function TaskDetailsSheet({
         setRemarkInput("");
       }
       
-      await updateTask(activeTask.id, updates, actor, "Marked task as completed");
+      await updateTask(activeTask.id, updates, actor, isLicenceTask ? `Step ${currentStep} completed. Final Licence Step Completed.` : "Marked task as completed");
       toast.success("Task marked as completed!");
     } catch (err: any) {
       toast.error(err.message || "Failed to mark completed");
@@ -4367,6 +4453,21 @@ function TaskDetailsSheet({
                 </div>
               </div>
 
+              {/* Appointment Date for Active Step (Licence only) */}
+              {(activeTask.applicationType === "Licence" || (activeTask as any).subModule === "licence") && (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs uppercase font-bold text-gray-400">
+                    Appointment Date (Step {(activeTask as any).currentStep || 1})
+                  </Label>
+                  <Input
+                    type="date"
+                    value={sheetApptDate}
+                    onChange={(e) => setSheetApptDate(e.target.value)}
+                    className="bg-white text-xs font-semibold text-slate-900"
+                  />
+                </div>
+              )}
+
               {/* Task Step Detail (Only for License SubModule Tasks with active License step details) */}
               {((activeTask.applicationType === "Licence" || (activeTask as any).subModule === "licence") &&
                 (activeTask as any).licenseDetails &&
@@ -4380,6 +4481,8 @@ function TaskDetailsSheet({
                     {(() => {
                       const lic = licenseForm || (activeTask as any).licenseDetails || linkedApp?.licenseDetails || {};
                       const currentStep = (activeTask as any).currentStep || 1;
+                      const stepAppts = (activeTask as any).stepAppointments || {};
+                      const stepHist = (activeTask as any).stepHistory || {};
                       
                       // Render 2 steps for New Learning Licence or 3 steps for DL New LL Endorsement / Renewals
                       return (
@@ -4401,18 +4504,36 @@ function TaskDetailsSheet({
                               )}
                             </div>
                           )}
-                                                          {/* Step 1 */}
+                          {/* Step 1 */}
                           <div className={cn(
-                            "p-3 rounded-lg border shadow-sm space-y-1 transition-all bg-white border-blue-200"
+                            "p-3 rounded-lg border shadow-sm space-y-2 transition-all bg-white",
+                            currentStep === 1 ? "border-blue-400 ring-1 ring-blue-300" : currentStep > 1 ? "border-emerald-300 bg-emerald-50/20" : "border-slate-200 opacity-75"
                           )}>
                             <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
                               <span className={cn(
-                                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white"
-                              )}>1</span>
+                                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                currentStep > 1 ? "bg-emerald-600 text-white" : currentStep === 1 ? "bg-blue-600 text-white" : "bg-slate-300 text-slate-700"
+                              )}>
+                                {currentStep > 1 ? "✓" : "1"}
+                              </span>
                               <span>STEP 1: LEARNING / DL DETAILS</span>
                               {currentStep === 1 && <span className="ml-auto text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold shadow-sm">Active</span>}
+                              {currentStep > 1 && <span className="ml-auto text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold shadow-sm">Completed</span>}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 text-[11px] text-slate-700">
+
+                            {/* Step 1 Appointment & Completion Info */}
+                            {(stepAppts[1] || stepHist[1]?.completedAt) && (
+                              <div className="flex flex-wrap gap-4 text-[11px] bg-slate-50 p-2 rounded border text-slate-600">
+                                {stepAppts[1] && (
+                                  <div><span className="font-semibold text-slate-500">Appointment Date:</span> <span className="font-bold text-slate-800">{stepAppts[1]}</span></div>
+                                )}
+                                {stepHist[1]?.completedAt && (
+                                  <div><span className="font-semibold text-slate-500">Completed At:</span> <span className="font-bold text-emerald-700">{new Date(stepHist[1].completedAt).toLocaleString("en-IN")}</span></div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] text-slate-700">
                               <div>
                                 <span className="font-semibold text-slate-500 block mb-0.5">LL / DL NO:</span>
                                 <Input
@@ -4462,16 +4583,35 @@ function TaskDetailsSheet({
 
                           {/* Step 2 */}
                           <div className={cn(
-                            "p-3 rounded-lg border shadow-sm space-y-1 transition-all bg-white border-blue-200"
+                            "p-3 rounded-lg border shadow-sm space-y-2 transition-all bg-white",
+                            currentStep === 2 ? "border-blue-400 ring-1 ring-blue-300" : currentStep > 2 ? "border-emerald-300 bg-emerald-50/20" : "border-slate-200 opacity-75"
                           )}>
                             <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
                               <span className={cn(
-                                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white"
-                              )}>2</span>
+                                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                currentStep > 2 ? "bg-emerald-600 text-white" : currentStep === 2 ? "bg-blue-600 text-white" : "bg-slate-300 text-slate-700"
+                              )}>
+                                {currentStep > 2 ? "✓" : "2"}
+                              </span>
                               <span>STEP 2: DRIVING LICENCE DETAILS</span>
                               {currentStep === 2 && <span className="ml-auto text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold shadow-sm">Active</span>}
+                              {currentStep > 2 && <span className="ml-auto text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold shadow-sm">Completed</span>}
+                              {currentStep < 2 && <span className="ml-auto text-[9px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">Not Started</span>}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 text-[11px] text-slate-700">
+
+                            {/* Step 2 Appointment & Completion Info */}
+                            {(stepAppts[2] || stepHist[2]?.completedAt) && (
+                              <div className="flex flex-wrap gap-4 text-[11px] bg-slate-50 p-2 rounded border text-slate-600">
+                                {stepAppts[2] && (
+                                  <div><span className="font-semibold text-slate-500">Appointment Date:</span> <span className="font-bold text-slate-800">{stepAppts[2]}</span></div>
+                                )}
+                                {stepHist[2]?.completedAt && (
+                                  <div><span className="font-semibold text-slate-500">Completed At:</span> <span className="font-bold text-emerald-700">{new Date(stepHist[2].completedAt).toLocaleString("en-IN")}</span></div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] text-slate-700">
                               <div>
                                 <span className="font-semibold text-slate-500 block mb-0.5">DL NO:</span>
                                 <Input
@@ -4572,16 +4712,35 @@ function TaskDetailsSheet({
                           {/* Step 3 (For 3-step License Services) */}
                           {(lic.dlNewLlEndorsement?.enabled || lic.llRenewClass?.enabled || lic.dlRenewRetest?.enabled) && (
                             <div className={cn(
-                              "p-3 rounded-lg border shadow-sm space-y-1 transition-all bg-white border-blue-200"
+                              "p-3 rounded-lg border shadow-sm space-y-2 transition-all bg-white",
+                              currentStep === 3 ? "border-blue-400 ring-1 ring-blue-300" : currentStep > 3 ? "border-emerald-300 bg-emerald-50/20" : "border-slate-200 opacity-75"
                             )}>
                               <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
                                 <span className={cn(
-                                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white"
-                                )}>3</span>
+                                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                  currentStep > 3 ? "bg-emerald-600 text-white" : currentStep === 3 ? "bg-blue-600 text-white" : "bg-slate-300 text-slate-700"
+                                )}>
+                                  {currentStep > 3 ? "✓" : "3"}
+                                </span>
                                 <span>STEP 3: FINAL DL DETAILS & ENDORSEMENT</span>
                                 {currentStep === 3 && <span className="ml-auto text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold shadow-sm">Active</span>}
+                                {currentStep > 3 && <span className="ml-auto text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold shadow-sm">Completed</span>}
+                                {currentStep < 3 && <span className="ml-auto text-[9px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">Not Started</span>}
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 text-[11px] text-slate-700">
+
+                              {/* Step 3 Appointment & Completion Info */}
+                              {(stepAppts[3] || stepHist[3]?.completedAt) && (
+                                <div className="flex flex-wrap gap-4 text-[11px] bg-slate-50 p-2 rounded border text-slate-600">
+                                  {stepAppts[3] && (
+                                    <div><span className="font-semibold text-slate-500">Appointment Date:</span> <span className="font-bold text-slate-800">{stepAppts[3]}</span></div>
+                                  )}
+                                  {stepHist[3]?.completedAt && (
+                                    <div><span className="font-semibold text-slate-500">Completed At:</span> <span className="font-bold text-emerald-700">{new Date(stepHist[3].completedAt).toLocaleString("en-IN")}</span></div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] text-slate-700">
                                 <div>
                                   <span className="font-semibold text-slate-500 block mb-0.5">DL NO:</span>
                                   <Input
@@ -5020,20 +5179,47 @@ function TaskDetailsSheet({
                 <Button onClick={async () => {
                   if (!activeTask) return;
                   try {
-                    let formattedDate = licenseStepDate;
-                    if (licenseStepDate.includes("-")) {
-                      const parts = licenseStepDate.split("-");
-                      if (parts.length === 3) {
-                        formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                    const formattedDate = licenseStepDate ? formatDateDDMMYYYY(licenseStepDate) : "";
+                    const now = new Date().toISOString();
+
+                    const existingStepAppts = (activeTask as any).stepAppointments || {};
+                    const updatedStepAppts = {
+                      ...existingStepAppts,
+                      [licenseStepModalData.nextStep]: formattedDate,
+                    };
+
+                    const existingHistory = (activeTask as any).stepHistory || {};
+                    const updatedHistory = {
+                      ...existingHistory,
+                      [licenseStepModalData.currentStep]: {
+                        stepNumber: licenseStepModalData.currentStep,
+                        completedAt: now,
+                        completedBy: actor,
+                        appointmentDate: activeTask.appointmentDate || existingStepAppts[licenseStepModalData.currentStep] || "",
+                        status: "Completed",
                       }
-                    }
+                    };
 
                     const updates: any = {
                       currentStep: licenseStepModalData.nextStep,
                       appointmentDate: formattedDate,
+                      stepAppointments: updatedStepAppts,
+                      stepHistory: updatedHistory,
                       status: "In Progress" as TaskStatus,
                       done: false,
                     };
+
+                    const appDocId = (activeTask as any).applicationDocId || activeTask.recordId || activeTask.id.replace("task-app-", "");
+                    if (appDocId) {
+                      const appRef = doc(db, "registry_applications_v1", appDocId);
+                      await setDoc(appRef, {
+                        appointmentDate: formattedDate,
+                        "licenseDetails.currentStep": licenseStepModalData.nextStep,
+                        "licenseDetails.stepAppointments": updatedStepAppts,
+                        "licenseDetails.stepHistory": updatedHistory,
+                        updatedAt: now,
+                      }, { merge: true }).catch(() => {});
+                    }
 
                     if (remarkInput.trim()) {
                       await addComment(activeTask.id, actor, remarkInput.trim());

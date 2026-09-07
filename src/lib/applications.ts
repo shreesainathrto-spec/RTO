@@ -1121,6 +1121,29 @@ export async function saveApplicationAndVehicle(
     console.error("Failed to auto-sync client inside saveApplicationAndVehicle:", err);
   });
 
+  // Trigger task assignment notification to assigned employee
+  if (appData.assignedEmployeeName && appData.assignedEmployeeName !== "Unassigned") {
+    try {
+      const { sendTaskAssignmentNotification } = await import("./notifications");
+      await sendTaskAssignmentNotification({
+        taskId: `task-app-${finalAppId}`,
+        title: `${joinedServices || "Application Services"} - ${appData.vehicleNumber}`,
+        serviceName: joinedServices || "Application Services",
+        vehicleNumber: appData.vehicleNumber || "",
+        applicationId: generatedAppIdStr || finalAppId,
+        applicationDocId: finalAppId,
+        subModule: appData.subModule || "services",
+        assignedEmployeeId: appData.assignedEmployeeId,
+        assignedEmployeeUid: appData.assignedEmployeeId,
+        assignedEmployeeName: appData.assignedEmployeeName,
+        assignee: appData.assignedEmployeeName,
+        assignedBy: session?.name || "System",
+      }, { isReassignment: !!existingAppId });
+    } catch (notifErr) {
+      console.warn("Failed to dispatch application task assignment notification:", notifErr);
+    }
+  }
+
   return finalAppId;
 }
 

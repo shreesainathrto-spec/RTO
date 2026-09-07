@@ -350,11 +350,11 @@ function BillingDashboard() {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="border rounded-lg px-3 py-2 text-sm"
               >
-                <option value="all">બધા</option>
-                <option value="Pending">બધા બકી</option>
-                <option value="Partially Paid">થોડા બકી</option>
-                <option value="Paid">કુલ જામ</option>
-                <option value="Cancelled">રદ કરેલ</option>
+                <option value="all">All</option>
+                <option value="Pending">Badha baki</option>
+                <option value="Partially Paid">Thoda Baki</option>
+                <option value="Paid">Total jama</option>
+                <option value="Cancelled">Cancelled</option>
               </select>
 
               <select

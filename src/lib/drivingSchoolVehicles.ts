@@ -49,6 +49,8 @@ export interface DrivingSchoolVehicle {
 
 export interface StudentTrip {
   studentName: string;
+  driverName?: string;
+  driver?: string;
   batch?: string;
   pickupTime: string;
   dropTime: string;
@@ -74,6 +76,7 @@ export interface DrivingSchoolDailyReport {
   
   // Expenses
   fuelExpense?: number;
+  fuelPhoto?: string;
   generalExpense?: number;
   otherExpense?: number;
   expenseRemarks?: string;
@@ -327,6 +330,14 @@ export async function saveDrivingSchoolDailyReportRecord(
     );
   }
 
+  let fuelPhotoUrl = reportData.fuelPhoto || "";
+  if (fuelPhotoUrl && (fuelPhotoUrl.startsWith("data:") || (fuelPhotoUrl as any) instanceof File)) {
+    fuelPhotoUrl = await uploadImageToStorage(
+      fuelPhotoUrl,
+      `vehicles/${reportData.vehicleId}/reports/${targetId}_fuel_${Date.now()}.jpg`
+    );
+  }
+
   const distance = Math.max(0, (Number(reportData.endOdometer) || 0) - (Number(reportData.startOdometer) || 0));
   const fExp = Number(reportData.fuelExpense) || 0;
   const gExp = Number(reportData.generalExpense) || 0;
@@ -339,6 +350,7 @@ export async function saveDrivingSchoolDailyReportRecord(
       id: targetId,
       startOdometerPhoto: startOdoPhotoUrl,
       endOdometerPhoto: endOdoPhotoUrl,
+      fuelPhoto: fuelPhotoUrl,
       startOdometer: Number(reportData.startOdometer) || 0,
       endOdometer: Number(reportData.endOdometer) || 0,
       distanceTravelled: distance,
@@ -359,6 +371,7 @@ export async function saveDrivingSchoolDailyReportRecord(
       id: targetId,
       startOdometerPhoto: startOdoPhotoUrl,
       endOdometerPhoto: endOdoPhotoUrl,
+      fuelPhoto: fuelPhotoUrl,
       startOdometer: Number(reportData.startOdometer) || 0,
       endOdometer: Number(reportData.endOdometer) || 0,
       distanceTravelled: distance,

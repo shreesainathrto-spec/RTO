@@ -565,6 +565,30 @@ export async function reassignTask(
   } else {
     await updateDoc(doc(db, COL, taskId), updates);
   }
+
+  // Send reassignment notification to the new assignee
+  if (newAssigneeId && newAssigneeId !== prevAssignee) {
+    try {
+      const { sendTaskAssignmentNotification } = await import("./notifications");
+      await sendTaskAssignmentNotification({
+        taskId,
+        title: task.title,
+        serviceName: task.serviceName || (task as any).serviceType || task.title,
+        vehicleNumber: task.vehicleId || (task as any).vehicleNumber || "",
+        applicationId: task.applicationId || "",
+        applicationDocId: (task as any).applicationDocId || task.recordId || "",
+        subModule: (task as any).subModule || "services",
+        assignedEmployeeId: newAssigneeId,
+        assignedEmployeeUid: assigneeInfo.assignedEmployeeUid,
+        assignedEmployeeName: newAssigneeName,
+        assignee: assigneeInfo.assignee,
+        assignedBy: actor,
+      }, { isReassignment: true });
+    } catch (notifErr) {
+      console.warn("Failed to dispatch task reassignment notification:", notifErr);
+    }
+  }
+
   invalidateCache();
 }
 
@@ -886,6 +910,30 @@ export async function createManualTask(input: CreateTaskInput): Promise<Task> {
 
     await setDoc(doc(db, COL, id), cleanData);
     console.log("✅ Task created successfully:", id);
+
+    // Send task assignment notification to the assigned employee
+    if (task.assignee || task.assignedEmployeeId || task.assignedEmployeeUid) {
+      try {
+        const { sendTaskAssignmentNotification } = await import("./notifications");
+        await sendTaskAssignmentNotification({
+          taskId: id,
+          title: task.title,
+          serviceName: task.serviceName || task.serviceType || task.title,
+          vehicleNumber: task.vehicleId || (task as any).vehicleNumber || "",
+          applicationId: task.applicationId || "",
+          applicationDocId: (task as any).applicationDocId || task.recordId || "",
+          subModule: task.subModule || "services",
+          assignedEmployeeId: task.assignedEmployeeId,
+          assignedEmployeeUid: task.assignedEmployeeUid,
+          assignedEmployeeName: task.assignedEmployeeName,
+          assignee: task.assignee,
+          assignedBy: task.createdBy || "System",
+        });
+      } catch (notifErr) {
+        console.warn("Failed to dispatch task assignment notification:", notifErr);
+      }
+    }
+
     if (task.associationType === "client" && task.recordId) {
       await logClientActivity(
         task.recordId,
@@ -1143,6 +1191,29 @@ export async function updateTask(
       }
     } catch (e) {
       console.warn("Application doc sync notice:", e);
+    }
+
+    // Dispatch reassignment notification if assignee has changed to a new employee
+    if (patch.assignee !== undefined && patch.assignee !== existing.assignee) {
+      try {
+        const { sendTaskAssignmentNotification } = await import("./notifications");
+        await sendTaskAssignmentNotification({
+          taskId,
+          title: patch.title || existing.title,
+          serviceName: patch.serviceName || existing.serviceName || patch.title || existing.title,
+          vehicleNumber: patch.vehicleId || (patch as any).vehicleNumber || existing.vehicleId || (existing as any).vehicleNumber || "",
+          applicationId: (patch as any).applicationId || existing.applicationId || "",
+          applicationDocId: (patch as any).applicationDocId || existing.applicationDocId || existing.recordId || "",
+          subModule: (patch as any).subModule || existing.subModule || "services",
+          assignedEmployeeId: patch.assignedEmployeeId || existing.assignedEmployeeId,
+          assignedEmployeeUid: patch.assignedEmployeeUid || existing.assignedEmployeeUid,
+          assignedEmployeeName: patch.assignedEmployeeName || existing.assignedEmployeeName,
+          assignee: patch.assignee,
+          assignedBy: actor,
+        }, { isReassignment: true });
+      } catch (notifErr) {
+        console.warn("Failed to dispatch task assignment notification on update:", notifErr);
+      }
     }
 
     if (existing.associationType === "client" && existing.recordId) {

@@ -632,10 +632,10 @@ function ApplicationsPage() {
             onChange={(e) => setPaymentFilter(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
-            <option value="all">બધા</option>
-            <option value="Paid">કુલ જામ</option>
-            <option value="Pending">બધા બકી</option>
-            <option value="Partial">થોડા બકી</option>
+            <option value="all">All</option>
+            <option value="Paid">Total jama</option>
+            <option value="Pending">Badha baki</option>
+            <option value="Partial">Thoda Baki</option>
           </select>
 
           <select
@@ -2208,7 +2208,9 @@ function ApplicationFormModal({
       "International Driving License",
       "International Licence",
       "Change Date Of Birth In DL",
-      "DL Renew"
+      "DL Renew",
+      "Surrender of License",
+      "Surrender Of License"
     ].includes(srv);
   };
 
@@ -4889,6 +4891,7 @@ function ApplicationFormModal({
                     "International Driving License",
                     "Change Date Of Birth In DL",
                     "DL Renew",
+                    "Surrender of License",
                   ].map((srv) => {
                     const isChecked = generalLicServices.selected.includes(srv);
                     return (
@@ -6392,6 +6395,8 @@ function ApplicationFormModal({
                     "Passport Size Photo",
                     "Medical Certificate",
                     "Other Document",
+                    "Other Document 1",
+                    "Other Document 2",
                   ].map((docName) => {
                     const docUrl = uploadedDocs[docName];
                     const isUploaded = !!docUrl;

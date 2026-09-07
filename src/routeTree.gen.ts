@@ -27,6 +27,7 @@ import { Route as DashboardAccountingRouteImport } from './routes/dashboard.acco
 import { Route as DashboardSettingsMigrationRouteImport } from './routes/dashboard.settings.migration'
 import { Route as DashboardServiceServiceTypeRouteImport } from './routes/dashboard.service.$serviceType'
 import { Route as DashboardDrivingSchoolVehiclesRouteImport } from './routes/dashboard.driving-school.vehicles'
+import { Route as DashboardDrivingSchoolExpensesRouteImport } from './routes/dashboard.driving-school.expenses'
 import { Route as DashboardSettingsMigrationAccountingRouteImport } from './routes/dashboard.settings.migration.accounting'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -122,6 +123,12 @@ const DashboardDrivingSchoolVehiclesRoute =
     path: '/driving-school/vehicles',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardDrivingSchoolExpensesRoute =
+  DashboardDrivingSchoolExpensesRouteImport.update({
+    id: '/driving-school/expenses',
+    path: '/driving-school/expenses',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardSettingsMigrationAccountingRoute =
   DashboardSettingsMigrationAccountingRouteImport.update({
     id: '/accounting',
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/task-templates': typeof DashboardTaskTemplatesRoute
   '/dashboard/tasks': typeof DashboardTasksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/driving-school/expenses': typeof DashboardDrivingSchoolExpensesRoute
   '/dashboard/driving-school/vehicles': typeof DashboardDrivingSchoolVehiclesRoute
   '/dashboard/service/$serviceType': typeof DashboardServiceServiceTypeRoute
   '/dashboard/settings/migration': typeof DashboardSettingsMigrationRouteWithChildren
@@ -165,6 +173,7 @@ export interface FileRoutesByTo {
   '/dashboard/task-templates': typeof DashboardTaskTemplatesRoute
   '/dashboard/tasks': typeof DashboardTasksRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/driving-school/expenses': typeof DashboardDrivingSchoolExpensesRoute
   '/dashboard/driving-school/vehicles': typeof DashboardDrivingSchoolVehiclesRoute
   '/dashboard/service/$serviceType': typeof DashboardServiceServiceTypeRoute
   '/dashboard/settings/migration': typeof DashboardSettingsMigrationRouteWithChildren
@@ -187,6 +196,7 @@ export interface FileRoutesById {
   '/dashboard/task-templates': typeof DashboardTaskTemplatesRoute
   '/dashboard/tasks': typeof DashboardTasksRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/driving-school/expenses': typeof DashboardDrivingSchoolExpensesRoute
   '/dashboard/driving-school/vehicles': typeof DashboardDrivingSchoolVehiclesRoute
   '/dashboard/service/$serviceType': typeof DashboardServiceServiceTypeRoute
   '/dashboard/settings/migration': typeof DashboardSettingsMigrationRouteWithChildren
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/dashboard/task-templates'
     | '/dashboard/tasks'
     | '/dashboard/'
+    | '/dashboard/driving-school/expenses'
     | '/dashboard/driving-school/vehicles'
     | '/dashboard/service/$serviceType'
     | '/dashboard/settings/migration'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/dashboard/task-templates'
     | '/dashboard/tasks'
     | '/dashboard'
+    | '/dashboard/driving-school/expenses'
     | '/dashboard/driving-school/vehicles'
     | '/dashboard/service/$serviceType'
     | '/dashboard/settings/migration'
@@ -251,6 +263,7 @@ export interface FileRouteTypes {
     | '/dashboard/task-templates'
     | '/dashboard/tasks'
     | '/dashboard/'
+    | '/dashboard/driving-school/expenses'
     | '/dashboard/driving-school/vehicles'
     | '/dashboard/service/$serviceType'
     | '/dashboard/settings/migration'
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardServiceServiceTypeRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/driving-school/expenses': {
+      id: '/dashboard/driving-school/expenses'
+      path: '/driving-school/expenses'
+      fullPath: '/dashboard/driving-school/expenses'
+      preLoaderRoute: typeof DashboardDrivingSchoolExpensesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/driving-school/vehicles': {
       id: '/dashboard/driving-school/vehicles'
       path: '/driving-school/vehicles'
@@ -440,6 +460,7 @@ interface DashboardRouteChildren {
   DashboardTaskTemplatesRoute: typeof DashboardTaskTemplatesRoute
   DashboardTasksRoute: typeof DashboardTasksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardDrivingSchoolExpensesRoute: typeof DashboardDrivingSchoolExpensesRoute
   DashboardDrivingSchoolVehiclesRoute: typeof DashboardDrivingSchoolVehiclesRoute
   DashboardServiceServiceTypeRoute: typeof DashboardServiceServiceTypeRoute
 }
@@ -458,6 +479,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTaskTemplatesRoute: DashboardTaskTemplatesRoute,
   DashboardTasksRoute: DashboardTasksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardDrivingSchoolExpensesRoute: DashboardDrivingSchoolExpensesRoute,
   DashboardDrivingSchoolVehiclesRoute: DashboardDrivingSchoolVehiclesRoute,
   DashboardServiceServiceTypeRoute: DashboardServiceServiceTypeRoute,
 }

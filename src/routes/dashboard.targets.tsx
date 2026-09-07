@@ -95,7 +95,8 @@ export const SUBMODULE_SERVICES: Record<SubModuleType, string[]> = {
     "Hazardous Training Card",
     "International Driving License",
     "Change Date Of Birth In DL",
-    "DL Renew"
+    "DL Renew",
+    "Surrender Of License"
   ],
   insurance: [
     "Insurance"

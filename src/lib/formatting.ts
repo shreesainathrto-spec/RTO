@@ -52,10 +52,10 @@ export function formatDateTime(iso?: string | Date | null | any): string {
 export function formatPaymentStatus(status?: string): string {
   if (!status) return "—";
   const s = status.trim().toLowerCase();
-  if (s === "paid") return "કુલ જામ";
-  if (s === "partially paid" || s === "partial") return "થોડા બકી";
-  if (s === "pending" || s === "pending invoice" || s === "unpaid") return "બધા બકી";
-  if (s === "overdue") return "સમય મર્યાદા";
+  if (s === "paid") return "Total jama";
+  if (s === "partially paid" || s === "partial") return "Thoda Baki";
+  if (s === "pending" || s === "pending invoice" || s === "unpaid") return "Badha baki";
+  if (s === "overdue") return "Time limit";
   return status;
 }
 

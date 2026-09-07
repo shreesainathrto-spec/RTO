@@ -377,12 +377,14 @@ function Overview() {
     }
 
     if (activeSubModule === "licence") {
-      // License Dashboard: Show 5 License Expiries (4 Compulsory: NT, TR, LL, DL + Hazardous)
+      // License Dashboard: Show License Expiries and Appointments
       const ntList: ExpiryItem[] = [];
       const trList: ExpiryItem[] = [];
       const hazardousList: ExpiryItem[] = [];
       const llList: ExpiryItem[] = [];
       const dlList: ExpiryItem[] = [];
+      const llApptList: ExpiryItem[] = [];
+      const dlApptList: ExpiryItem[] = [];
 
       applications.forEach((app) => {
         if (app.subModule === "licence" || app.licenseDetails) {
@@ -395,6 +397,31 @@ function Overview() {
             phone,
             vehicleClass: "License Record",
           };
+
+          // LL Appointment Date
+          const rawLlAppt = lic.newLearningLicence?.appointmentDate || lic.llRenewClass?.appointmentDate || (app.licenseDetails?.newLearningLicence ? app.appointmentDate : "");
+          if (rawLlAppt) {
+            const days = computeDaysRemaining(rawLlAppt);
+            llApptList.push({
+              ...baseInfo,
+              expiryDate: rawLlAppt,
+              daysRemaining: days,
+              isCritical: days <= 15,
+            });
+          }
+
+          // DL Appointment Date
+          const rawDlAppt = lic.dlNewLlEndorsement?.step3?.validityDate || (!lic.newLearningLicence?.appointmentDate && !lic.llRenewClass?.appointmentDate && app.appointmentDate ? app.appointmentDate : (lic.newLearningLicence?.step2?.validityDate ? app.appointmentDate : ""));
+          const effectiveDlAppt = rawDlAppt || (app.appointmentDate && !rawLlAppt ? app.appointmentDate : "");
+          if (effectiveDlAppt) {
+            const days = computeDaysRemaining(effectiveDlAppt);
+            dlApptList.push({
+              ...baseInfo,
+              expiryDate: effectiveDlAppt,
+              daysRemaining: days,
+              isCritical: days <= 15,
+            });
+          }
 
           // Check LL Expiries
           const llExp = lic.newLearningLicence?.step1?.expiryDate || lic.dlNewLlEndorsement?.step2?.expiryDate || lic.llRenewClass?.step1?.expiryDate || lic.dlRenewRetest?.step2?.expiryDate;
@@ -439,6 +466,8 @@ function Overview() {
         { title: "LL License Expiry", icon: Calendar, items: llList.sort(sortFn), color: "text-purple-600 bg-purple-50 border-purple-100" },
         { title: "DL License Expiry", icon: Building2, items: dlList.sort(sortFn), color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
         { title: "Hazardous License Expiry", icon: AlertCircle, items: hazardousList.sort(sortFn), color: "text-rose-600 bg-rose-50 border-rose-100" },
+        { title: "Appointment Date of LL", icon: Clock, items: llApptList.sort(sortFn), color: "text-indigo-600 bg-indigo-50 border-indigo-100" },
+        { title: "Appointment Date of DL", icon: Clock, items: dlApptList.sort(sortFn), color: "text-teal-600 bg-teal-50 border-teal-100" },
       ];
     }
 

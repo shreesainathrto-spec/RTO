@@ -1087,7 +1087,7 @@ export function ServiceDashboard({
                   <th className="p-3 text-center">SR NO</th>
                   {activeSubModule === "licence" ? (
                     <>
-                      <th className="p-3">REFERENCE</th>
+                      <th className="p-3">APPLICATION NUMBER</th>
                       <th className="p-3">CLIENT NAME</th>
                       <th className="p-3">DOB</th>
                       <th className="p-3">MOBILE NUMBER</th>
