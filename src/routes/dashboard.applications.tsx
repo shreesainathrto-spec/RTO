@@ -1539,6 +1539,10 @@ function VehicleClassMultiSelect({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const options = useMemo(() => [
+    "Motor Cycle without Gear (Non Transport) (MCWOG)",
+    "Motor Cycle with Gear (Non Transport) (MCWG)",
+    "LIGHT MOTOR VEHICLE (LMV)",
+    "Adapted Vehicle (ADPVEH)",
     "MCWG", "MCWOG", "LMV", "LMV-NT", "LMV-TR", "HMV", "HGMV", "HPMV", "HPV",
     "Transport", "Tractor", "Trailer", "Road Roller", "Excavator", "Crane", "Other"
   ], []);
@@ -1838,9 +1842,33 @@ function ApplicationFormModal({
   const [suggestedClasses, setSuggestedClasses] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("custom_vehicle_classes");
-      return saved ? JSON.parse(saved) : ["MCWG", "LMV", "TRANS", "MCWOG", "3W-DET", "HGMV", "HPMV"];
+      return saved ? JSON.parse(saved) : [
+        "Motor Cycle without Gear (Non Transport) (MCWOG)",
+        "Motor Cycle with Gear (Non Transport) (MCWG)",
+        "LIGHT MOTOR VEHICLE (LMV)",
+        "Adapted Vehicle (ADPVEH)",
+        "MCWG",
+        "LMV",
+        "TRANS",
+        "MCWOG",
+        "3W-DET",
+        "HGMV",
+        "HPMV"
+      ];
     } catch (e) {
-      return ["MCWG", "LMV", "TRANS", "MCWOG", "3W-DET", "HGMV", "HPMV"];
+      return [
+        "Motor Cycle without Gear (Non Transport) (MCWOG)",
+        "Motor Cycle with Gear (Non Transport) (MCWG)",
+        "LIGHT MOTOR VEHICLE (LMV)",
+        "Adapted Vehicle (ADPVEH)",
+        "MCWG",
+        "LMV",
+        "TRANS",
+        "MCWOG",
+        "3W-DET",
+        "HGMV",
+        "HPMV"
+      ];
     }
   });
   const [showClassDropdown, setShowClassDropdown] = useState(false);
@@ -6286,7 +6314,7 @@ function ApplicationFormModal({
                     <label className="font-semibold text-slate-700 block mb-1">TOTAL COURSE FEES</label>
                     <input
                       type="number"
-                      placeholder="9500"
+                      placeholder="0"
                       value={dsTotalCourseFees}
                       onChange={(e) => setDsTotalCourseFees(e.target.value)}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
@@ -6297,7 +6325,7 @@ function ApplicationFormModal({
                     <label className="font-semibold text-slate-700 block mb-1">ADVANCE PAID</label>
                     <input
                       type="number"
-                      placeholder="4000"
+                      placeholder="0"
                       value={dsAdvancePaid}
                       onChange={(e) => setDsAdvancePaid(e.target.value)}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-700"
