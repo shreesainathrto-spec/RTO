@@ -2205,6 +2205,7 @@ function ApplicationFormModal({
       "DL Replacement",
       "DL Extract",
       "Hazardous Training Card",
+      "International Driving License",
       "International Licence",
       "Change Date Of Birth In DL",
       "DL Renew"
@@ -4885,7 +4886,7 @@ function ApplicationFormModal({
                     "DL Replacement",
                     "DL Extract",
                     "Hazardous Training Card",
-                    "International Licence",
+                    "International Driving License",
                     "Change Date Of Birth In DL",
                     "DL Renew",
                   ].map((srv) => {
@@ -5061,10 +5062,10 @@ function ApplicationFormModal({
                   </div>
                 )}
 
-                {/* 3. INTERNATIONAL LICENCE */}
-                {generalLicServices.selected.includes("International Licence") && (
+                {/* 3. INTERNATIONAL DRIVING LICENSE */}
+                {(generalLicServices.selected.includes("International Driving License") || generalLicServices.selected.includes("International Licence")) && (
                   <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3 shadow-sm text-xs">
-                    <h4 className="font-bold text-slate-800 uppercase tracking-wide">INTERNATIONAL LICENCE</h4>
+                    <h4 className="font-bold text-slate-800 uppercase tracking-wide">INTERNATIONAL DRIVING LICENSE</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="font-semibold text-slate-500 text-[10px] block mb-1 uppercase">EXPIRE DATE</label>
@@ -6314,7 +6315,6 @@ function ApplicationFormModal({
                     <label className="font-semibold text-slate-700 block mb-1">TOTAL COURSE FEES</label>
                     <input
                       type="number"
-                      placeholder="0"
                       value={dsTotalCourseFees}
                       onChange={(e) => setDsTotalCourseFees(e.target.value)}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
@@ -6325,7 +6325,6 @@ function ApplicationFormModal({
                     <label className="font-semibold text-slate-700 block mb-1">ADVANCE PAID</label>
                     <input
                       type="number"
-                      placeholder="0"
                       value={dsAdvancePaid}
                       onChange={(e) => setDsAdvancePaid(e.target.value)}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-700"

@@ -456,17 +456,29 @@ export interface ApplicationRecord {
 
 export function computePermitExpiry(permitType: string, issueDate: string): string {
   if (!issueDate) return "";
-  const date = new Date(issueDate);
+  const parts = issueDate.split("-");
+  if (parts.length !== 3) return "";
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const date = new Date(year, month, day);
   if (isNaN(date.getTime())) return "";
 
   if (permitType === "Gujarat Permit" || permitType === "National Permit" || permitType === "National Permit(Gujrat Permit)") {
     date.setFullYear(date.getFullYear() + 5);
+    date.setDate(date.getDate() - 1);
   } else if (permitType === "National Permit Authorization") {
     date.setFullYear(date.getFullYear() + 1);
+    date.setDate(date.getDate() - 1);
   } else {
     date.setFullYear(date.getFullYear() + 5);
+    date.setDate(date.getDate() - 1);
   }
-  return date.toISOString().split("T")[0];
+
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export async function fetchVehicleByNumber(vehicleNumber: string): Promise<VehicleMaster | null> {
