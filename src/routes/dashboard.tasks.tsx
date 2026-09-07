@@ -2514,14 +2514,14 @@ function TaskTable({
         </div>
         <div ref={taskTableRef} className="max-h-[60vh] overflow-y-auto overflow-x-auto relative [&::-webkit-scrollbar]:hidden" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 bg-slate-50 text-gray-500 uppercase font-bold text-[9px] border-b z-10">
+            <thead className="sticky top-0 bg-slate-50 text-gray-600 uppercase font-bold text-xs tracking-wider border-b z-10">
               <tr>
                 <th className="p-3 text-center">SR NO</th>
                 {activeSubModule === "form5" ? (
                   <>
                     <th className="p-3">Name</th>
                     <th className="p-3">Date Of Birth</th>
-                    <th className="p-3 font-bold text-slate-900">Application No</th>
+                    <th className="p-3 font-bold text-slate-900 text-sm">Application No</th>
                     <th className="p-3">Adhar No</th>
                     <th className="p-3">LL NO</th>
                     <th className="p-3">DL NO</th>
@@ -2548,7 +2548,7 @@ function TaskTable({
                   </>
                 ) : isLicenceSubModule ? (
                   <>
-                    <th className="p-3">APPLICATION NO</th>
+                    <th className="p-3 font-bold text-slate-900 text-sm">APPLICATION NO</th>
                     <th className="p-3">CLIENT NAME</th>
                     <th className="p-3">DOB</th>
                     <th className="p-3">MOBILE NUMBER</th>
@@ -2575,7 +2575,7 @@ function TaskTable({
                     <th className="p-3">NUMBER</th>
                     <th className="p-3">TASK STATUS</th>
                     <th className="p-3">LATEST REMARK</th>
-                    <th className="p-3">APPLICATION NO.</th>
+                    <th className="p-3 font-bold text-slate-900 text-sm">APPLICATION NO.</th>
                     <th className="p-3">REFERENCE</th>
                     <th className="p-3">ASSIGNED EMPLOYEE</th>
                     <th className="p-3">PUC EXPIRY</th>
@@ -2961,7 +2961,7 @@ function TaskTable({
                     <td className="p-3 max-w-[150px] truncate text-slate-500 text-[11px]" title={latestComment}>
                       {latestComment}
                     </td>
-                    <td className="p-3 font-semibold text-blue-600 font-mono">
+                    <td className="p-3 font-bold text-blue-600 font-mono text-sm tracking-wide">
                       {appNo}
                     </td>
                     <td className="p-3 font-mono text-slate-600 truncate max-w-[100px]" title={reference}>
