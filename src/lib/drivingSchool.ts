@@ -205,6 +205,7 @@ export async function saveDrivingSchoolApplication(
           status: "Read",
           createdAt: now,
         })),
+      });
       await setDoc(newTaskRef, taskPayload);
 
       // Trigger task assignment notification to assigned employee

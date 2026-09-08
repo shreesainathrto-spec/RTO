@@ -152,10 +152,10 @@ export async function saveDrivingSchoolExpenseRecord(
       salaryPeriod: expenseData.salaryPeriod || "",
       paymentMethod: expenseData.paymentMethod || "Cash",
       description: expenseData.description || "",
-      createdBy: session?.uid || session?.id || "system",
+      createdBy: session?.uid || (session as any)?.id || "system",
       createdByName: session?.name || "System",
       createdAt: now,
-      updatedBy: session?.uid || session?.id || "system",
+      updatedBy: session?.uid || (session as any)?.id || "system",
       updatedByName: session?.name || "System",
       updatedAt: now,
     });
@@ -174,7 +174,7 @@ export async function saveDrivingSchoolExpenseRecord(
       salaryPeriod: expenseData.salaryPeriod || "",
       paymentMethod: expenseData.paymentMethod || "Cash",
       description: expenseData.description || "",
-      updatedBy: session?.uid || session?.id || "system",
+      updatedBy: session?.uid || (session as any)?.id || "system",
       updatedByName: session?.name || "System",
       updatedAt: now,
     });

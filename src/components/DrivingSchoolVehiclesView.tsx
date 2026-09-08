@@ -46,6 +46,7 @@ import {
   subscribeDrivingSchoolApplications,
   type DrivingSchoolApplication,
 } from "@/lib/drivingSchool";
+import { subscribeAllUsers, type UserRecord } from "@/lib/userService";
 import { CameraOdometerModal } from "@/components/CameraOdometerModal";
 
 const TIME_SLOTS = [
@@ -113,6 +114,7 @@ export function DrivingSchoolVehiclesView() {
 
   // Form States for Daily Report
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
+  const [reportDriverId, setReportDriverId] = useState("");
   const [reportDriver, setReportDriver] = useState("");
   const [reportStartOdometer, setReportStartOdometer] = useState<number | string>(0);
   const [reportEndOdometer, setReportEndOdometer] = useState<number | string>(0);
@@ -139,6 +141,9 @@ export function DrivingSchoolVehiclesView() {
   const [viewReportDetailsOpen, setViewReportDetailsOpen] = useState(false);
   const [selectedReportForView, setSelectedReportForView] = useState<DrivingSchoolDailyReport | null>(null);
 
+  // Employees & Drivers from Employee Management
+  const [employees, setEmployees] = useState<UserRecord[]>([]);
+
   // Search & Filter States for Daily Report History List
   const [filterVehicleId, setFilterVehicleId] = useState("");
   const [filterDate, setFilterDate] = useState("");
@@ -156,13 +161,38 @@ export function DrivingSchoolVehiclesView() {
     const unsubReports = subscribeAllDailyReports((list) => {
       setAllReports(list);
     });
+    const unsubEmployees = subscribeAllUsers((list) => {
+      setEmployees(list);
+    });
 
     return () => {
       unsubVehicles();
       unsubApps();
       unsubReports();
+      unsubEmployees();
     };
   }, []);
+
+  // Filter only Active Drivers from Employee Management
+  const driversList = useMemo(() => {
+    return employees.filter((e) => {
+      const isStatusActive = e.status === "active";
+      const isRoleDriver = (e.role || "").toLowerCase() === "driver" || ((e as any).designation || "").toLowerCase() === "driver";
+      return isStatusActive && isRoleDriver;
+    });
+  }, [employees]);
+
+  // Helper to resolve driver display name from driverId or fallback
+  const getDriverDisplayName = (r?: { driverId?: string; driver?: string; driverName?: string } | null) => {
+    if (!r) return "—";
+    if (r.driverId) {
+      const found = employees.find(
+        (e) => e.uid === r.driverId || e.userId === r.driverId || (e.employeeId && e.employeeId === r.driverId)
+      );
+      if (found) return found.fullName;
+    }
+    return r.driver || r.driverName || "—";
+  };
 
   // Filter Active Driving School Students for Daily Report Dropdown
   const activeStudents = useMemo(() => {
@@ -268,7 +298,15 @@ export function DrivingSchoolVehiclesView() {
     if (report) {
       setEditingReportId(report.id);
       setReportDate(report.reportDate || "");
-      setReportDriver(report.driver || "");
+      // Resolve driverId or match by name
+      const matchedDriver = driversList.find(
+        (d) => (d.uid || d.userId || d.employeeId) === report.driverId || d.fullName.toLowerCase() === (report.driver || "").toLowerCase()
+      );
+      const initialDriverId = report.driverId || (matchedDriver ? (matchedDriver.uid || matchedDriver.userId || matchedDriver.employeeId || "") : "");
+      const initialDriverName = matchedDriver ? matchedDriver.fullName : (report.driver || "");
+      
+      setReportDriverId(initialDriverId);
+      setReportDriver(initialDriverName);
       setReportStartOdometer(report.startOdometer || 0);
       setReportEndOdometer(report.endOdometer || 0);
       setReportStartPhoto(report.startOdometerPhoto || "");
@@ -295,6 +333,8 @@ export function DrivingSchoolVehiclesView() {
     } else {
       setEditingReportId(null);
       setReportDate(new Date().toISOString().split("T")[0]);
+      // If drivers are available, default to empty so user explicitly picks, or leaves unselected
+      setReportDriverId("");
       setReportDriver("");
       setReportStartOdometer(veh.currentOdometer || 0);
       setReportEndOdometer((veh.currentOdometer || 0) + 38);
@@ -472,7 +512,9 @@ export function DrivingSchoolVehiclesView() {
         vehicleId: selectedVehicleForReport.id,
         vehicleNumber: selectedVehicleForReport.vehicleNumber,
         reportDate,
+        driverId: reportDriverId,
         driver: reportDriver,
+        driverName: reportDriver,
         startOdometer: startOdo,
         endOdometer: endOdo,
         distanceTravelled: Math.max(0, endOdo - startOdo),
@@ -1226,14 +1268,39 @@ export function DrivingSchoolVehiclesView() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Driver Name</label>
-                    <input
-                      type="text"
-                      placeholder="Driver Name..."
-                      value={reportDriver}
-                      onChange={(e) => setReportDriver(e.target.value)}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium"
-                    />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Driver Name *</label>
+                    <select
+                      value={reportDriverId}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        setReportDriverId(selectedId);
+                        const selectedEmp = driversList.find((d) => (d.uid || d.userId || d.employeeId) === selectedId);
+                        if (selectedEmp) {
+                          setReportDriver(selectedEmp.fullName);
+                        } else if (!selectedId) {
+                          setReportDriver("");
+                        }
+                      }}
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="">
+                        {driversList.length === 0 ? "No drivers available" : "Select Driver"}
+                      </option>
+                      {driversList.map((driver) => {
+                        const idVal = driver.uid || driver.userId || driver.employeeId || "";
+                        return (
+                          <option key={idVal} value={idVal}>
+                            {driver.fullName} {driver.employeeId ? `(${driver.employeeId})` : ""}
+                          </option>
+                        );
+                      })}
+                      {/* Preserving legacy/archived driver name if not in current active drivers */}
+                      {reportDriver && !driversList.some((d) => (d.uid || d.userId || d.employeeId) === reportDriverId || d.fullName.toLowerCase() === reportDriver.toLowerCase()) && (
+                        <option value={reportDriverId || reportDriver}>
+                          {reportDriver} (Archived / Other)
+                        </option>
+                      )}
+                    </select>
                   </div>
 
                   <div>
@@ -1541,7 +1608,7 @@ export function DrivingSchoolVehiclesView() {
                 </div>
                 <div>
                   <span className="text-[9px] font-bold text-slate-400 uppercase">Driver</span>
-                  <div className="text-sm font-bold text-slate-900">{selectedReportForView.driver || "—"}</div>
+                  <div className="text-sm font-bold text-slate-900">{getDriverDisplayName(selectedReportForView)}</div>
                 </div>
               </div>
 
@@ -1967,7 +2034,7 @@ export function DrivingSchoolVehiclesView() {
                       <div className="grid grid-cols-2 gap-y-2 gap-x-4">
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase">Driver</span>
-                          <div className="font-semibold text-slate-800">{todayVehicleReport.driver || "—"}</div>
+                          <div className="font-semibold text-slate-800">{getDriverDisplayName(todayVehicleReport)}</div>
                         </div>
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase">Distance travelled</span>

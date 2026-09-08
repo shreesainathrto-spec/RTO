@@ -64,6 +64,7 @@ export interface DrivingSchoolDailyReport {
   id: string;
   vehicleId: string;
   vehicleNumber: string;
+  driverId?: string;
   driver?: string;
   reportDate: string;
   

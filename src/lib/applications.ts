@@ -449,6 +449,8 @@ export interface ApplicationRecord {
   groupName?: string;
   totalCourseFees?: number;
   advancePaid?: number;
+  challanQty?: number | string;
+  challanAmount?: number | string;
   isDeleted?: boolean;
   selectedServices?: string[];
   appointmentDate?: string;

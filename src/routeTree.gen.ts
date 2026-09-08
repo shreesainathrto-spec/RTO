@@ -396,18 +396,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardServiceServiceTypeRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/driving-school/expenses': {
-      id: '/dashboard/driving-school/expenses'
-      path: '/driving-school/expenses'
-      fullPath: '/dashboard/driving-school/expenses'
-      preLoaderRoute: typeof DashboardDrivingSchoolExpensesRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/driving-school/vehicles': {
       id: '/dashboard/driving-school/vehicles'
       path: '/driving-school/vehicles'
       fullPath: '/dashboard/driving-school/vehicles'
       preLoaderRoute: typeof DashboardDrivingSchoolVehiclesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/driving-school/expenses': {
+      id: '/dashboard/driving-school/expenses'
+      path: '/driving-school/expenses'
+      fullPath: '/dashboard/driving-school/expenses'
+      preLoaderRoute: typeof DashboardDrivingSchoolExpensesRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/settings/migration/accounting': {

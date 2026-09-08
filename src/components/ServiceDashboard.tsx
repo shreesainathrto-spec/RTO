@@ -198,6 +198,8 @@ export function ServiceDashboard({
   title,
   description,
 }: ServiceDashboardProps) {
+  const [session] = useState(() => getSession());
+  const isAdmin = session?.role === "admin" || session?.role === "manager";
   const [activeSubModule, setActiveSubModule] = useState<SubModuleType>("services");
   const [records, setRecords] = useState<RegistryRecord[]>([]);
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
