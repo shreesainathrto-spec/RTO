@@ -2019,7 +2019,7 @@ function ApplicationFormModal({
   const [isLumpsumTax, setIsLumpsumTax] = useState(editingApp?.vehicleDetails?.taxDetails?.isLumpsum || false);
   const [taxIssueDate, setTaxIssueDate] = useState(editingApp?.vehicleDetails?.taxDetails?.issueDate || "");
   const [taxExpiryDate, setTaxExpiryDate] = useState(editingApp?.vehicleDetails?.taxDetails?.expiryDate || "");
-  const [taxAmount, setTaxAmount] = useState<number>(editingApp?.vehicleDetails?.taxDetails?.amount || 0);
+  const [taxAmount, setTaxAmount] = useState<number | string>(editingApp?.vehicleDetails?.taxDetails?.amount ?? "");
   const [taxPeriod, setTaxPeriod] = useState<string>(editingApp?.vehicleDetails?.taxDetails?.period || "");
 
   const insuranceCompanies = useMemo(() => {
@@ -2396,7 +2396,7 @@ function ApplicationFormModal({
       setIsLumpsumTax(false);
       setTaxIssueDate("");
       setTaxExpiryDate("");
-      setTaxAmount(0);
+      setTaxAmount("");
 
       setFitnessIssueDate("");
       setFitnessExpiryDate("");
@@ -2753,7 +2753,7 @@ function ApplicationFormModal({
         setIsLumpsumTax(existing.taxDetails.isLumpsum || false);
         setTaxIssueDate(existing.taxDetails.issueDate || "");
         setTaxExpiryDate(existing.taxDetails.expiryDate || "");
-        setTaxAmount(existing.taxDetails.amount || 0);
+        setTaxAmount(existing.taxDetails.amount ?? "");
       }
       if (existing.fitnessDetails) {
         setFitnessIssueDate(existing.fitnessDetails.issueDate || "");
@@ -3132,7 +3132,7 @@ function ApplicationFormModal({
         isLumpsum: isLumpsumTax,
         issueDate: taxIssueDate,
         expiryDate: taxExpiryDate,
-        amount: taxAmount,
+        amount: taxAmount === "" ? 0 : Number(taxAmount),
       },
       fitnessDetails: {
         issueDate: fitnessIssueDate,
@@ -7596,7 +7596,7 @@ function ApplicationFormModal({
                         type="number"
                         placeholder="₹"
                         value={taxAmount}
-                        onChange={(e) => setTaxAmount(Number(e.target.value))}
+                        onChange={(e) => setTaxAmount(e.target.value === "" ? "" : Number(e.target.value))}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
                       />
                     </div>
