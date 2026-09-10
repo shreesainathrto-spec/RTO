@@ -50,7 +50,7 @@ import {
 } from "lucide-react";
 import { generateServicePDF } from "@/lib/pdfServiceHelper";
 import { ApplicationFullDetailsModal } from "./ApplicationFullDetailsModal";
-import { cn } from "@/lib/utils";
+import { cn, compareAppointmentDatesDescending } from "@/lib/utils";
 import { toast } from "sonner";
 import { ApplicationTypeBadge, getApplicationTypeStyle } from "./ApplicationTypeBadge";
 import { formatPaymentStatus, formatDateDDMMYYYY } from "@/lib/formatting";
@@ -267,11 +267,15 @@ export function ServiceDashboard({
   const [rtoApptDate, setRtoApptDate] = useState("");
   const [pendingStatusChange, setPendingStatusChange] = useState<{ task: any; newStatus: string; isVahaan?: boolean } | null>(null);
 
-  // Licence PASS popup states
+  // Licence PASS popup states (Separate LL and DL Details)
   const [showLicencePassModal, setShowLicencePassModal] = useState(false);
-  const [licNo, setLicNo] = useState("");
-  const [licIssueDate, setLicIssueDate] = useState("");
-  const [licExpiryDate, setLicExpiryDate] = useState("");
+  const [llNo, setLlNo] = useState("");
+  const [llIssueDate, setLlIssueDate] = useState("");
+  const [llExpiryDate, setLlExpiryDate] = useState("");
+
+  const [dlNo, setDlNo] = useState("");
+  const [dlIssueDate, setDlIssueDate] = useState("");
+  const [dlExpiryDate, setDlExpiryDate] = useState("");
 
   const handleLicenceStatusChange = (task: any, newStatus: string) => {
     if (newStatus === "FAIL" || newStatus === "RETEST") {
@@ -283,69 +287,67 @@ export function ServiceDashboard({
     } else if (newStatus === "PASS") {
       setPendingStatusChange({ task, newStatus, isVahaan: false });
 
-      const currentStep = task.currentStep || 1;
       const lic = task.licenseDetails || {};
-      let existNo = "";
-      let existIssue = "";
-      let existExpiry = "";
+      let existLlNo = "";
+      let existLlIssue = "";
+      let existLlExpiry = "";
 
+      let existDlNo = "";
+      let existDlIssue = "";
+      let existDlExpiry = "";
+
+      // 1. Extract existing LL details
       if (lic.newLearningLicence?.enabled) {
-        if (currentStep === 1) {
-          existNo = lic.newLearningLicence.step1?.llNumber || "";
-          existIssue = lic.newLearningLicence.step1?.issueDate || "";
-          existExpiry = lic.newLearningLicence.step1?.expiryDate || "";
-        } else {
-          existNo = lic.newLearningLicence.step2?.dlNumber || "";
-          existIssue = lic.newLearningLicence.step2?.issueDate || "";
-          existExpiry = lic.newLearningLicence.step2?.validityDate || "";
-        }
+        existLlNo = lic.newLearningLicence.step1?.llNumber || "";
+        existLlIssue = lic.newLearningLicence.step1?.issueDate || "";
+        existLlExpiry = lic.newLearningLicence.step1?.expiryDate || "";
       } else if (lic.dlNewLlEndorsement?.enabled) {
-        if (currentStep === 1) {
-          existNo = lic.dlNewLlEndorsement.step1?.dlNumber || "";
-          existIssue = lic.dlNewLlEndorsement.step1?.issueDate || "";
-          existExpiry = lic.dlNewLlEndorsement.step1?.validityDate || "";
-        } else if (currentStep === 2) {
-          existNo = lic.dlNewLlEndorsement.step2?.llNumber || "";
-          existIssue = lic.dlNewLlEndorsement.step2?.issueDate || "";
-          existExpiry = lic.dlNewLlEndorsement.step2?.expiryDate || "";
-        } else {
-          existNo = lic.dlNewLlEndorsement.step3?.dlNumber || "";
-          existIssue = lic.dlNewLlEndorsement.step3?.issueDate || "";
-          existExpiry = lic.dlNewLlEndorsement.step3?.validityDate || "";
-        }
+        existLlNo = lic.dlNewLlEndorsement.step2?.llNumber || "";
+        existLlIssue = lic.dlNewLlEndorsement.step2?.issueDate || "";
+        existLlExpiry = lic.dlNewLlEndorsement.step2?.expiryDate || "";
       } else if (lic.llRenewClass?.enabled) {
-        if (currentStep === 1) {
-          existNo = lic.llRenewClass.step1?.llNumber || "";
-          existIssue = lic.llRenewClass.step1?.issueDate || "";
-          existExpiry = lic.llRenewClass.step1?.expiryDate || "";
-        } else if (currentStep === 2) {
-          existNo = lic.llRenewClass.step2?.dlNumber || "";
-          existIssue = lic.llRenewClass.step2?.issueDate || "";
-          existExpiry = lic.llRenewClass.step2?.validityDate || "";
-        } else {
-          existNo = lic.llRenewClass.step3?.dlNumber || "";
-          existIssue = lic.llRenewClass.step3?.issueDate || "";
-          existExpiry = lic.llRenewClass.step3?.validityDate || "";
-        }
+        existLlNo = lic.llRenewClass.step1?.llNumber || "";
+        existLlIssue = lic.llRenewClass.step1?.issueDate || "";
+        existLlExpiry = lic.llRenewClass.step1?.expiryDate || "";
       } else if (lic.dlRenewRetest?.enabled) {
-        if (currentStep === 1) {
-          existNo = lic.dlRenewRetest.step1?.dlNumber || "";
-          existIssue = lic.dlRenewRetest.step1?.issueDate || "";
-          existExpiry = lic.dlRenewRetest.step1?.validityDate || "";
-        } else if (currentStep === 2) {
-          existNo = lic.dlRenewRetest.step2?.llNumber || "";
-          existIssue = lic.dlRenewRetest.step2?.issueDate || "";
-          existExpiry = lic.dlRenewRetest.step2?.expiryDate || "";
-        } else {
-          existNo = lic.dlRenewRetest.step3?.dlNumber || "";
-          existIssue = lic.dlRenewRetest.step3?.issueDate || "";
-          existExpiry = lic.dlRenewRetest.step3?.validityDate || "";
-        }
+        existLlNo = lic.dlRenewRetest.step2?.llNumber || "";
+        existLlIssue = lic.dlRenewRetest.step2?.issueDate || "";
+        existLlExpiry = lic.dlRenewRetest.step2?.expiryDate || "";
       }
+      if (!existLlNo && lic.llNumber) existLlNo = lic.llNumber;
+      if (!existLlIssue && lic.llIssueDate) existLlIssue = lic.llIssueDate;
+      if (!existLlExpiry && lic.llExpiryDate) existLlExpiry = lic.llExpiryDate;
 
-      setLicNo(existNo);
-      setLicIssueDate(existIssue);
-      setLicExpiryDate(existExpiry);
+      // 2. Extract existing DL details
+      if (lic.newLearningLicence?.enabled) {
+        existDlNo = lic.newLearningLicence.step2?.dlNumber || "";
+        existDlIssue = lic.newLearningLicence.step2?.issueDate || "";
+        existDlExpiry = lic.newLearningLicence.step2?.validityDate || "";
+      } else if (lic.dlNewLlEndorsement?.enabled) {
+        existDlNo = lic.dlNewLlEndorsement.step3?.dlNumber || lic.dlNewLlEndorsement.step1?.dlNumber || "";
+        existDlIssue = lic.dlNewLlEndorsement.step3?.issueDate || lic.dlNewLlEndorsement.step1?.issueDate || "";
+        existDlExpiry = lic.dlNewLlEndorsement.step3?.validityDate || lic.dlNewLlEndorsement.step1?.validityDate || "";
+      } else if (lic.llRenewClass?.enabled) {
+        existDlNo = lic.llRenewClass.step3?.dlNumber || lic.llRenewClass.step2?.dlNumber || "";
+        existDlIssue = lic.llRenewClass.step3?.issueDate || lic.llRenewClass.step2?.issueDate || "";
+        existDlExpiry = lic.llRenewClass.step3?.validityDate || lic.llRenewClass.step2?.validityDate || "";
+      } else if (lic.dlRenewRetest?.enabled) {
+        existDlNo = lic.dlRenewRetest.step3?.dlNumber || lic.dlRenewRetest.step1?.dlNumber || "";
+        existDlIssue = lic.dlRenewRetest.step3?.issueDate || lic.dlRenewRetest.step1?.issueDate || "";
+        existDlExpiry = lic.dlRenewRetest.step3?.validityDate || lic.dlRenewRetest.step1?.validityDate || "";
+      }
+      if (!existDlNo && (lic.dlNumber || lic.drivingLicenceNumber)) existDlNo = lic.dlNumber || lic.drivingLicenceNumber || "";
+      if (!existDlIssue && lic.dlIssueDate) existDlIssue = lic.dlIssueDate;
+      if (!existDlExpiry && (lic.dlValidityDate || lic.dlExpiryDate)) existDlExpiry = lic.dlValidityDate || lic.dlExpiryDate || "";
+
+      setLlNo(existLlNo);
+      setLlIssueDate(formatDateDDMMYYYY(existLlIssue) || existLlIssue);
+      setLlExpiryDate(formatDateDDMMYYYY(existLlExpiry) || existLlExpiry);
+
+      setDlNo(existDlNo);
+      setDlIssueDate(formatDateDDMMYYYY(existDlIssue) || existDlIssue);
+      setDlExpiryDate(formatDateDDMMYYYY(existDlExpiry) || existDlExpiry);
+
       setShowLicencePassModal(true);
     } else {
       updateLicenceStatusAndExpense(task, newStatus, task.rtoExpense || 0, task.appointmentDate || "");
@@ -355,40 +357,71 @@ export function ServiceDashboard({
   const handleSaveLicencePass = async () => {
     if (!pendingStatusChange) return;
     const { task, newStatus } = pendingStatusChange;
-    const currentStep = task.currentStep || 1;
     const lic = { ...(task.licenseDetails || {}) };
 
     if (lic.newLearningLicence?.enabled) {
-      if (currentStep === 1) {
-        lic.newLearningLicence.step1 = { ...(lic.newLearningLicence.step1 || {}), llNumber: licNo, issueDate: licIssueDate, expiryDate: licExpiryDate };
-      } else {
-        lic.newLearningLicence.step2 = { ...(lic.newLearningLicence.step2 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      }
+      lic.newLearningLicence.step1 = {
+        ...(lic.newLearningLicence.step1 || {}),
+        llNumber: llNo.trim(),
+        issueDate: llIssueDate.trim(),
+        expiryDate: llExpiryDate.trim(),
+      };
+      lic.newLearningLicence.step2 = {
+        ...(lic.newLearningLicence.step2 || {}),
+        dlNumber: dlNo.trim(),
+        issueDate: dlIssueDate.trim(),
+        validityDate: dlExpiryDate.trim(),
+      };
     } else if (lic.dlNewLlEndorsement?.enabled) {
-      if (currentStep === 1) {
-        lic.dlNewLlEndorsement.step1 = { ...(lic.dlNewLlEndorsement.step1 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      } else if (currentStep === 2) {
-        lic.dlNewLlEndorsement.step2 = { ...(lic.dlNewLlEndorsement.step2 || {}), llNumber: licNo, issueDate: licIssueDate, expiryDate: licExpiryDate };
-      } else {
-        lic.dlNewLlEndorsement.step3 = { ...(lic.dlNewLlEndorsement.step3 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      }
+      lic.dlNewLlEndorsement.step2 = {
+        ...(lic.dlNewLlEndorsement.step2 || {}),
+        llNumber: llNo.trim(),
+        issueDate: llIssueDate.trim(),
+        expiryDate: llExpiryDate.trim(),
+      };
+      lic.dlNewLlEndorsement.step3 = {
+        ...(lic.dlNewLlEndorsement.step3 || {}),
+        dlNumber: dlNo.trim(),
+        issueDate: dlIssueDate.trim(),
+        validityDate: dlExpiryDate.trim(),
+      };
     } else if (lic.llRenewClass?.enabled) {
-      if (currentStep === 1) {
-        lic.llRenewClass.step1 = { ...(lic.llRenewClass.step1 || {}), llNumber: licNo, issueDate: licIssueDate, expiryDate: licExpiryDate };
-      } else if (currentStep === 2) {
-        lic.llRenewClass.step2 = { ...(lic.llRenewClass.step2 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      } else {
-        lic.llRenewClass.step3 = { ...(lic.llRenewClass.step3 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      }
+      lic.llRenewClass.step1 = {
+        ...(lic.llRenewClass.step1 || {}),
+        llNumber: llNo.trim(),
+        issueDate: llIssueDate.trim(),
+        expiryDate: llExpiryDate.trim(),
+      };
+      lic.llRenewClass.step3 = {
+        ...(lic.llRenewClass.step3 || {}),
+        dlNumber: dlNo.trim(),
+        issueDate: dlIssueDate.trim(),
+        validityDate: dlExpiryDate.trim(),
+      };
     } else if (lic.dlRenewRetest?.enabled) {
-      if (currentStep === 1) {
-        lic.dlRenewRetest.step1 = { ...(lic.dlRenewRetest.step1 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      } else if (currentStep === 2) {
-        lic.dlRenewRetest.step2 = { ...(lic.dlRenewRetest.step2 || {}), llNumber: licNo, issueDate: licIssueDate, expiryDate: licExpiryDate };
-      } else {
-        lic.dlRenewRetest.step3 = { ...(lic.dlRenewRetest.step3 || {}), dlNumber: licNo, issueDate: licIssueDate, validityDate: licExpiryDate };
-      }
+      lic.dlRenewRetest.step2 = {
+        ...(lic.dlRenewRetest.step2 || {}),
+        llNumber: llNo.trim(),
+        issueDate: llIssueDate.trim(),
+        expiryDate: llExpiryDate.trim(),
+      };
+      lic.dlRenewRetest.step3 = {
+        ...(lic.dlRenewRetest.step3 || {}),
+        dlNumber: dlNo.trim(),
+        issueDate: dlIssueDate.trim(),
+        validityDate: dlExpiryDate.trim(),
+      };
     }
+
+    // Persist independent fields on licenseDetails
+    lic.llNumber = llNo.trim();
+    lic.llIssueDate = llIssueDate.trim();
+    lic.llExpiryDate = llExpiryDate.trim();
+
+    lic.dlNumber = dlNo.trim();
+    lic.dlIssueDate = dlIssueDate.trim();
+    lic.dlValidityDate = dlExpiryDate.trim();
+    lic.dlExpiryDate = dlExpiryDate.trim();
 
     try {
       const coll = task.sourceCollection || "registry_tasks";
@@ -759,8 +792,16 @@ export function ServiceDashboard({
         );
         const resolvedGroupName = client?.groupName || client?.companyName || app?.groupName || item.groupName || "";
 
+        const resolvedApptDate =
+          item.appointmentDate ||
+          app?.appointmentDate ||
+          app?.licenseDetails?.newLearningLicence?.appointmentDate ||
+          app?.licenseDetails?.llRenewClass?.appointmentDate ||
+          "";
+
         const enriched = {
           ...item,
+          appointmentDate: resolvedApptDate,
           applicationId: item.applicationId || app?.applicationId || "",
           vehicleNumber: app?.vehicleNumber || item.vehicleNumber || item.vehicleId || "",
           clientName: app?.ownerName || item.clientName || item.ownerName || "",
@@ -878,7 +919,20 @@ export function ServiceDashboard({
     }
 
     if (statusFilter !== "all") {
-      list = list.filter((t: any) => (t.status || t.taskStatus || "").toUpperCase() === statusFilter.toUpperCase());
+      list = list.filter((t: any) => {
+        const rawStatus = (t.status || t.taskStatus || "").trim().toUpperCase();
+        const filterStatus = statusFilter.trim().toUpperCase();
+        if (filterStatus === "INWARD") {
+          return rawStatus === "INWARD";
+        }
+        if (filterStatus === "IN RTO") {
+          return rawStatus === "IN RTO" || rawStatus === "RTO";
+        }
+        if (filterStatus === "ON HOLD") {
+          return rawStatus === "ON HOLD" || rawStatus === "ONHOLD";
+        }
+        return rawStatus === filterStatus;
+      });
     }
 
     if (apptDateFilter) {
@@ -908,22 +962,7 @@ export function ServiceDashboard({
       });
     }
 
-    const parseDate = (dStr: string) => {
-      if (!dStr) return 0;
-      if (dStr.includes('/')) {
-        const parts = dStr.split('/');
-        if (parts.length === 3) {
-          return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
-        }
-      }
-      return new Date(dStr).getTime() || 0;
-    };
-
-    return final.sort((a: any, b: any) => {
-      const dateA = parseDate(a.appointmentDate);
-      const dateB = parseDate(b.appointmentDate);
-      return dateB - dateA;
-    });
+    return final.sort(compareAppointmentDatesDescending);
   }, [completedTasks, searchQuery, activeSubModule, groupFilter, statusFilter, apptDateFilter]);
 
   const openWorkflow = (record: RegistryRecord) => {
@@ -1064,6 +1103,7 @@ export function ServiceDashboard({
               <option value="all">ALL STATUSES</option>
               <option value="verify">VERIFY</option>
               <option value="approved">APPROVED</option>
+              <option value="inward">INWARD</option>
               <option value="in rto">IN RTO</option>
               <option value="on hold">ON HOLD</option>
               <option value="completed">COMPLETED</option>
@@ -1730,65 +1770,136 @@ export function ServiceDashboard({
         </DialogContent>
       </Dialog>
 
-      {/* Licence PASS details Modal */}
+      {/* Licence PASS details Modal (Separated LL and DL Details) */}
       <Dialog open={showLicencePassModal} onOpenChange={(open) => { if (!open) handleCancelLicencePass(); }}>
-        <DialogContent className="max-w-md p-6 bg-white rounded-xl shadow-xl border border-slate-200">
+        <DialogContent className="max-w-lg p-6 bg-white rounded-xl shadow-xl border border-slate-200">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900">
               ENTER LICENCE DETAILS FOR PASS STATUS
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4 text-xs">
-            <div className="space-y-1.5">
-              <label className="font-bold text-slate-700 block">LL / DL Number</label>
-              <Input
-                type="text"
-                value={licNo}
-                onChange={(e) => setLicNo(e.target.value)}
-                placeholder="Enter licence number..."
-                className="w-full p-2 border rounded-lg"
-              />
+          <div className="space-y-4 py-3 text-xs max-h-[75vh] overflow-y-auto pr-1">
+            {/* SECTION 1 — LL DETAILS */}
+            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-slate-200/60">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  LL Details (Learning Licence)
+                </h4>
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block">LL Number</label>
+                <Input
+                  type="text"
+                  value={llNo}
+                  onChange={(e) => setLlNo(e.target.value)}
+                  placeholder="Enter LL number..."
+                  className="w-full p-2 border rounded-lg bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">LL Issue Date (DD/MM/YYYY)</label>
+                  <Input
+                    type="text"
+                    value={llIssueDate}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, "");
+                      if (val.length > 8) val = val.slice(0, 8);
+                      if (val.length > 4) {
+                        val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                      } else if (val.length > 2) {
+                        val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                      }
+                      setLlIssueDate(val);
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    className="w-full p-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">LL Expiry Date (DD/MM/YYYY)</label>
+                  <Input
+                    type="text"
+                    value={llExpiryDate}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, "");
+                      if (val.length > 8) val = val.slice(0, 8);
+                      if (val.length > 4) {
+                        val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                      } else if (val.length > 2) {
+                        val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                      }
+                      setLlExpiryDate(val);
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    className="w-full p-2 border rounded-lg bg-white"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="font-bold text-slate-700 block">Issue Date (DD/MM/YYYY)</label>
-              <Input
-                type="text"
-                value={licIssueDate}
-                onChange={(e) => {
-                  let val = e.target.value.replace(/\D/g, "");
-                  if (val.length > 8) val = val.slice(0, 8);
-                  if (val.length > 4) {
-                    val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
-                  } else if (val.length > 2) {
-                    val = `${val.slice(0, 2)}/${val.slice(2)}`;
-                  }
-                  setLicIssueDate(val);
-                }}
-                placeholder="DD/MM/YYYY"
-                className="w-full p-2 border rounded-lg"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="font-bold text-slate-700 block">Expiry / Validity Date (DD/MM/YYYY)</label>
-              <Input
-                type="text"
-                value={licExpiryDate}
-                onChange={(e) => {
-                  let val = e.target.value.replace(/\D/g, "");
-                  if (val.length > 8) val = val.slice(0, 8);
-                  if (val.length > 4) {
-                    val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
-                  } else if (val.length > 2) {
-                    val = `${val.slice(0, 2)}/${val.slice(2)}`;
-                  }
-                  setLicExpiryDate(val);
-                }}
-                placeholder="DD/MM/YYYY"
-                className="w-full p-2 border rounded-lg"
-              />
+
+            {/* SECTION 2 — DL DETAILS */}
+            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-slate-200/60">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  DL Details (Driving Licence)
+                </h4>
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block">DL Number</label>
+                <Input
+                  type="text"
+                  value={dlNo}
+                  onChange={(e) => setDlNo(e.target.value)}
+                  placeholder="Enter DL number..."
+                  className="w-full p-2 border rounded-lg bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">DL Issue Date (DD/MM/YYYY)</label>
+                  <Input
+                    type="text"
+                    value={dlIssueDate}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, "");
+                      if (val.length > 8) val = val.slice(0, 8);
+                      if (val.length > 4) {
+                        val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                      } else if (val.length > 2) {
+                        val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                      }
+                      setDlIssueDate(val);
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    className="w-full p-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">DL Expiry Date (DD/MM/YYYY)</label>
+                  <Input
+                    type="text"
+                    value={dlExpiryDate}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, "");
+                      if (val.length > 8) val = val.slice(0, 8);
+                      if (val.length > 4) {
+                        val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                      } else if (val.length > 2) {
+                        val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                      }
+                      setDlExpiryDate(val);
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    className="w-full p-2 border rounded-lg bg-white"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          <DialogFooter className="flex justify-end gap-2 pt-2">
+          <DialogFooter className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <Button variant="outline" onClick={handleCancelLicencePass} className="px-4 py-2 text-xs rounded-lg">
               CANCEL
             </Button>

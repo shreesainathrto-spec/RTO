@@ -56,7 +56,7 @@ import { subscribeToTemplates, type TaskTemplate } from "@/lib/tasks";
 import { createInvoice } from "@/lib/billing";
 import { getInsuranceGstPercentage } from "@/lib/capitalize-settings";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, isAdvanceAmountValid, ADVANCE_AMOUNT_ERROR_MESSAGE } from "@/lib/utils";
 import { Timestamp } from "firebase/firestore";
 import { useApplicationAutoFill } from "@/hooks/useApplicationAutoFill";
 import {
@@ -1352,6 +1352,73 @@ function ApplicationsPage() {
   );
 }
 
+export function getResolvedDocUrl(docName: string, uploadedDocs: Record<string, string>): string {
+  let docUrl = uploadedDocs[docName];
+  if (!docUrl) {
+    if (docName === "RC Book") {
+      docUrl = uploadedDocs["Registration RC Document"] || uploadedDocs["Tax RC Document"] || uploadedDocs["RC Book"];
+    } else if (docName === "Registration RC Document" || docName === "Tax RC Document") {
+      docUrl = uploadedDocs["RC Book"] || uploadedDocs["Registration RC Document"] || uploadedDocs["Tax RC Document"];
+    } else if (docName === "Tax Receipt" || docName === "Tax Receipt Document") {
+      docUrl = uploadedDocs["Tax Receipt"] || uploadedDocs["Tax Receipt Document"] || uploadedDocs["Tax RC Document"];
+    } else if (docName === "Fitness" || docName === "Fitness Document") {
+      docUrl = uploadedDocs["Fitness"] || uploadedDocs["Fitness Document"];
+    } else if (docName === "Gujarat Permit" || docName === "Gujarat Permit Document") {
+      docUrl = uploadedDocs["Gujarat Permit"] || uploadedDocs["Gujarat Permit Document"];
+    } else if (docName === "National Permit(Gujrat Permit)" || docName === "National Permit(Gujrat Permit) Document") {
+      docUrl = uploadedDocs["National Permit(Gujrat Permit)"] || uploadedDocs["National Permit(Gujrat Permit) Document"];
+    } else if (docName === "National Permit Authorization" || docName === "National Permit Authorization Document") {
+      docUrl = uploadedDocs["National Permit Authorization"] || uploadedDocs["National Permit Authorization Document"];
+    } else if (docName === "PUC" || docName === "PUC Document") {
+      docUrl = uploadedDocs["PUC"] || uploadedDocs["PUC Document"];
+    } else if (docName === "Insurance" || docName === "Insurance Document") {
+      docUrl = uploadedDocs["Insurance"] || uploadedDocs["Insurance Document"];
+    }
+  }
+  return docUrl || "";
+}
+
+export function removeDocWithAliases(docName: string, setUploadedDocs: React.Dispatch<React.SetStateAction<Record<string, string>>>) {
+  setUploadedDocs((prev) => {
+    const next = { ...prev };
+    delete next[docName];
+    if (docName === "RC Book" || docName === "Registration RC Document" || docName === "Tax RC Document") {
+      delete next["RC Book"];
+      delete next["Registration RC Document"];
+      delete next["Tax RC Document"];
+    }
+    if (docName === "Tax Receipt" || docName === "Tax Receipt Document") {
+      delete next["Tax Receipt"];
+      delete next["Tax Receipt Document"];
+    }
+    if (docName === "Fitness" || docName === "Fitness Document") {
+      delete next["Fitness"];
+      delete next["Fitness Document"];
+    }
+    if (docName === "Gujarat Permit" || docName === "Gujarat Permit Document") {
+      delete next["Gujarat Permit"];
+      delete next["Gujarat Permit Document"];
+    }
+    if (docName === "National Permit(Gujrat Permit)" || docName === "National Permit(Gujrat Permit) Document") {
+      delete next["National Permit(Gujrat Permit)"];
+      delete next["National Permit(Gujrat Permit) Document"];
+    }
+    if (docName === "National Permit Authorization" || docName === "National Permit Authorization Document") {
+      delete next["National Permit Authorization"];
+      delete next["National Permit Authorization Document"];
+    }
+    if (docName === "PUC" || docName === "PUC Document") {
+      delete next["PUC"];
+      delete next["PUC Document"];
+    }
+    if (docName === "Insurance" || docName === "Insurance Document") {
+      delete next["Insurance"];
+      delete next["Insurance Document"];
+    }
+    return next;
+  });
+}
+
 function InlineDocUpload({
   label,
   docName,
@@ -1365,33 +1432,7 @@ function InlineDocUpload({
   setUploadedDocs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setPreviewDoc: (doc: { name: string; url: string } | null) => void;
 }) {
-  let docUrl = uploadedDocs[docName];
-  if (!docUrl) {
-    if (docName === "Registration RC Document" || docName === "Tax RC Document") {
-      docUrl = uploadedDocs["RC Book"];
-    }
-    if (docName === "Tax Receipt Document" || docName === "Tax RC Document") {
-      docUrl = docUrl || uploadedDocs["Tax Receipt"];
-    }
-    if (docName === "Fitness Document") {
-      docUrl = uploadedDocs["Fitness"];
-    }
-    if (docName === "Gujarat Permit Document") {
-      docUrl = uploadedDocs["Gujarat Permit"];
-    }
-    if (docName === "National Permit(Gujrat Permit) Document") {
-      docUrl = uploadedDocs["National Permit(Gujrat Permit)"];
-    }
-    if (docName === "National Permit Authorization Document") {
-      docUrl = uploadedDocs["National Permit Authorization"];
-    }
-    if (docName === "PUC Document") {
-      docUrl = uploadedDocs["PUC"];
-    }
-    if (docName === "Insurance Document") {
-      docUrl = uploadedDocs["Insurance"];
-    }
-  }
+  const docUrl = getResolvedDocUrl(docName, uploadedDocs);
   const isUploaded = !!docUrl;
 
   const printDoc = (url: string, name: string) => {
@@ -1454,37 +1495,7 @@ function InlineDocUpload({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setUploadedDocs((prev) => {
-                    const next = { ...prev };
-                    delete next[docName];
-                    if (docName === "Registration RC Document" || docName === "Tax RC Document") {
-                      delete next["RC Book"];
-                    }
-                    if (docName === "Tax Receipt Document" || docName === "Tax RC Document") {
-                      delete next["Tax Receipt"];
-                    }
-                    if (docName === "Fitness Document") {
-                      delete next["Fitness"];
-                    }
-                    if (docName === "Gujarat Permit Document") {
-                      delete next["Gujarat Permit"];
-                    }
-                    if (docName === "National Permit(Gujrat Permit) Document") {
-                      delete next["National Permit(Gujrat Permit)"];
-                    }
-                    if (docName === "National Permit Authorization Document") {
-                      delete next["National Permit Authorization"];
-                    }
-                    if (docName === "PUC Document") {
-                      delete next["PUC"];
-                    }
-                    if (docName === "Insurance Document") {
-                      delete next["Insurance"];
-                    }
-                    return next;
-                  });
-                }}
+                onClick={() => removeDocWithAliases(docName, setUploadedDocs)}
                 className="text-[9px] font-bold text-rose-600 hover:bg-rose-100/50 px-1.5 py-0.5 rounded transition"
               >
                 Delete
@@ -2857,11 +2868,17 @@ function ApplicationFormModal({
   ) => {
     setServiceAccountingMap((prev) => {
       const current = prev[srv] || { totalAmount: 0, advancePayment: 0 };
-      const nextTotal = field === "totalAmount" ? val : current.totalAmount;
-      const nextAdvance = field === "advancePayment" ? val : current.advancePayment;
+      const nextTotal = field === "totalAmount" ? Math.max(0, val) : current.totalAmount;
+      const nextAdvance = field === "advancePayment" ? Math.max(0, val) : current.advancePayment;
 
-      if (nextAdvance > nextTotal && field === "advancePayment") {
-        toast.error("Advance cannot exceed Total Amount.");
+      if (field === "advancePayment") {
+        if (!isAdvanceAmountValid(nextTotal, nextAdvance)) {
+          toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+        }
+      } else if (field === "totalAmount") {
+        if (nextAdvance > 0 && !isAdvanceAmountValid(nextTotal, nextAdvance)) {
+          toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+        }
       }
 
       return {
@@ -2974,10 +2991,15 @@ function ApplicationFormModal({
         }
       }
 
+      const totFee = Number(dsTotalCourseFees) || 0;
+      const advFee = Number(dsAdvancePaid) || 0;
+      if (!isAdvanceAmountValid(totFee, advFee)) {
+        toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+        return;
+      }
+
       setSaving(true);
       try {
-        const totFee = Number(dsTotalCourseFees) || 0;
-        const advFee = Number(dsAdvancePaid) || 0;
         const remFee = Math.max(0, totFee - advFee);
         const pStatus: "Paid" | "Partial" | "Pending" =
           remFee <= 0 ? "Paid" : advFee > 0 ? "Partial" : "Pending";
@@ -3046,6 +3068,12 @@ function ApplicationFormModal({
         toast.error("Total Fees is required!");
         return;
       }
+      const insTot = Number(insTotalFees) || 0;
+      const insAdv = Number(insAdvancePayment) || 0;
+      if (!isAdvanceAmountValid(insTot, insAdv)) {
+        toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+        return;
+      }
     } else if (activeSubModule === "form5") {
       if (!form5Details.name?.trim()) {
         toast.error("Name is mandatory for Form 5 Applications!");
@@ -3087,8 +3115,10 @@ function ApplicationFormModal({
 
     for (const srv of currentSelected) {
       const item = serviceAccountingMap[srv] || { totalAmount: 0, advancePayment: 0 };
-      if (item.advancePayment > item.totalAmount) {
-        toast.error("Advance cannot exceed Total Amount.");
+      const srvTot = Number(item.totalAmount) || 0;
+      const srvAdv = Number(item.advancePayment) || 0;
+      if (!isAdvanceAmountValid(srvTot, srvAdv)) {
+        toast.error(`${ADVANCE_AMOUNT_ERROR_MESSAGE} (${srv})`);
         return;
       }
     }
@@ -3338,7 +3368,7 @@ function ApplicationFormModal({
           applicationType: finalAppType,
           trackExpiry: {
             puc: activeSubModule === "insurance" ? false : (showPucDetails && !!pucExpiryDate),
-            tax: activeSubModule === "insurance" ? false : (showTaxDetails && (!!taxExpiryDate || taxAmount > 0)),
+            tax: activeSubModule === "insurance" ? false : (showTaxDetails && (!!taxExpiryDate || Number(taxAmount) > 0)),
             insurance: activeSubModule === "insurance" ? true : false,
             permit: activeSubModule === "insurance" ? false : (showPermitDetails && (!!gujaratPermitIssueDate || !!nationalPermitIssueDate || !!nationalAuthIssueDate)),
             fitness: activeSubModule === "insurance" ? false : (showFitnessDetails && !!fitnessExpiryDate),
@@ -6319,7 +6349,13 @@ function ApplicationFormModal({
                     <input
                       type="number"
                       value={dsTotalCourseFees}
-                      onChange={(e) => setDsTotalCourseFees(e.target.value)}
+                      onChange={(e) => {
+                        const newTot = e.target.value;
+                        setDsTotalCourseFees(newTot);
+                        if (Number(dsAdvancePaid) > 0 && !isAdvanceAmountValid(newTot, dsAdvancePaid)) {
+                          toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+                        }
+                      }}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                     />
                   </div>
@@ -6329,7 +6365,14 @@ function ApplicationFormModal({
                     <input
                       type="number"
                       value={dsAdvancePaid}
-                      onChange={(e) => setDsAdvancePaid(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const tot = dsTotalCourseFees;
+                        setDsAdvancePaid(val);
+                        if (!isAdvanceAmountValid(tot, val)) {
+                          toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+                        }
+                      }}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-700"
                     />
                   </div>
@@ -7039,7 +7082,13 @@ function ApplicationFormModal({
                       type="number"
                       placeholder="0"
                       value={insTotalFees || ""}
-                      onChange={(e) => setInsTotalFees(Number(e.target.value))}
+                      onChange={(e) => {
+                        const newTot = Number(e.target.value) || 0;
+                        setInsTotalFees(newTot);
+                        if (insAdvancePayment > 0 && !isAdvanceAmountValid(newTot, insAdvancePayment)) {
+                          toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+                        }
+                      }}
                       className="w-full p-3 bg-white border-2 border-blue-200 rounded-xl font-bold text-slate-900 text-sm shadow-sm"
                       required
                     />
@@ -7050,8 +7099,20 @@ function ApplicationFormModal({
                       type="number"
                       placeholder="0"
                       value={insAdvancePayment || ""}
-                      onChange={(e) => setInsAdvancePayment(Number(e.target.value))}
-                      className="w-full p-3 bg-white border-2 border-emerald-200 rounded-xl font-bold text-emerald-700 text-sm shadow-sm"
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        const tot = Number(insTotalFees) || 0;
+                        setInsAdvancePayment(val);
+                        if (!isAdvanceAmountValid(tot, val)) {
+                          toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+                        }
+                      }}
+                      className={cn(
+                        "w-full p-3 bg-white border-2 rounded-xl font-bold text-sm shadow-sm",
+                        !isAdvanceAmountValid(insTotalFees, insAdvancePayment) && insAdvancePayment > 0
+                          ? "border-rose-300 text-rose-700 bg-rose-50/30"
+                          : "border-emerald-200 text-emerald-700"
+                      )}
                     />
                   </div>
                 </div>
@@ -7873,32 +7934,8 @@ function ApplicationFormModal({
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                   {documentItems.map((docName) => {
-                    const docUrl = uploadedDocs[docName];
-                    let isUploaded = !!docUrl;
-                    if (docName === "RC Book" && (uploadedDocs["Registration RC Document"] || uploadedDocs["Tax RC Document"])) {
-                      isUploaded = true;
-                    }
-                    if (docName === "Tax Receipt" && uploadedDocs["Tax RC Document"]) {
-                      isUploaded = true;
-                    }
-                    if (docName === "Fitness" && uploadedDocs["Fitness Document"]) {
-                      isUploaded = true;
-                    }
-                    if (docName === "Gujarat Permit" && uploadedDocs["Gujarat Permit Document"]) {
-                      isUploaded = true;
-                    }
-                    if (docName === "National Permit(Gujrat Permit)" && uploadedDocs["National Permit(Gujrat Permit) Document"]) {
-                      isUploaded = true;
-                    }
-                    if (docName === "National Permit Authorization" && uploadedDocs["National Permit Authorization Document"]) {
-                      isUploaded = true;
-                    }
-                    if (docName === "PUC" && uploadedDocs["PUC Document"]) {
-                      isUploaded = true;
-                    }
-                    if (docName === "Insurance" && uploadedDocs["Insurance Document"]) {
-                      isUploaded = true;
-                    }
+                    const docUrl = getResolvedDocUrl(docName, uploadedDocs);
+                    const isUploaded = !!docUrl;
                     return (
                       <div
                         key={docName}
@@ -7957,11 +7994,7 @@ function ApplicationFormModal({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setUploadedDocs((prev) => {
-                                  const next = { ...prev };
-                                  delete next[docName];
-                                  return next;
-                                });
+                                removeDocWithAliases(docName, setUploadedDocs);
                                 toast.info(`${docName} removed`);
                               }}
                               className="text-[9px] font-bold text-rose-600 hover:text-rose-900 ml-1 bg-white/90 px-1.5 py-0.5 rounded border border-rose-200"
@@ -8050,15 +8083,26 @@ function ApplicationFormModal({
                   <div className="space-y-3">
                     {selectedServices.map((srv) => {
                       const item = serviceAccountingMap[srv] || { totalAmount: 0, advancePayment: 0 };
+                      const isInvalidAdvance = !isAdvanceAmountValid(item.totalAmount, item.advancePayment);
                       const pending = Math.max(0, item.totalAmount - item.advancePayment);
                       const srvDisplayName = srv === "Hypothecation Removal" ? "Hypothecation Terminate" : srv;
 
                       return (
                         <div
                           key={srv}
-                          className="p-3.5 bg-white border border-slate-200 rounded-xl grid grid-cols-1 sm:grid-cols-4 gap-3 items-center text-xs"
+                          className={cn(
+                            "p-3.5 bg-white border rounded-xl grid grid-cols-1 sm:grid-cols-4 gap-3 items-center text-xs transition-colors",
+                            isInvalidAdvance ? "border-rose-300 bg-rose-50/20" : "border-slate-200"
+                          )}
                         >
-                          <div className="font-bold text-slate-900">{srvDisplayName}</div>
+                          <div className="font-bold text-slate-900">
+                            <div>{srvDisplayName}</div>
+                            {isInvalidAdvance && (
+                              <span className="text-[10px] text-rose-600 font-semibold block mt-0.5">
+                                Advance must be less than total
+                              </span>
+                            )}
+                          </div>
 
                           <div>
                             <label className="font-semibold text-slate-500 block text-[10px] mb-0.5">
@@ -8086,7 +8130,12 @@ function ApplicationFormModal({
                               onChange={(e) =>
                                 updateServiceAccounting(srv, "advancePayment", Number(e.target.value))
                               }
-                              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-emerald-700"
+                              className={cn(
+                                "w-full p-2 rounded-lg font-semibold",
+                                isInvalidAdvance
+                                  ? "bg-rose-50 border border-rose-300 text-rose-700"
+                                  : "bg-slate-50 border border-slate-200 text-emerald-700"
+                              )}
                             />
                           </div>
 

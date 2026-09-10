@@ -84,7 +84,7 @@ import {
 } from "@/lib/structuredDocs";
 
 import { subscribeToTemplates, type TaskTemplate } from "@/lib/tasks";
-import { cn } from "@/lib/utils";
+import { cn, isAdvanceAmountValid, ADVANCE_AMOUNT_ERROR_MESSAGE } from "@/lib/utils";
 
 
 interface ClientDetailWorkspaceProps {
@@ -528,12 +528,13 @@ export function ClientDetailWorkspace({
       toast.error("Total Amount is required and must be greater than 0");
       return;
     }
-    if ((serviceForm.amountReceived ?? 0) < 0) {
+    const advanceVal = serviceForm.advancePayment ?? serviceForm.amountReceived ?? 0;
+    if (advanceVal < 0) {
       toast.error("Advance Payment cannot be negative");
       return;
     }
-    if ((serviceForm.amountReceived ?? 0) > serviceForm.serviceAmount) {
-      toast.error("Advance Payment cannot exceed Total Amount");
+    if (!isAdvanceAmountValid(serviceForm.serviceAmount, advanceVal)) {
+      toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
       return;
     }
     const isLicense = isLicenseService(serviceForm.serviceType);

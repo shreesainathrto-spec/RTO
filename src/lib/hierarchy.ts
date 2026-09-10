@@ -17,6 +17,7 @@ import { removeUndefined, type ServiceType } from "./records";
 import { getSession } from "./auth";
 import { invalidateCache } from "./cacheInvalidator";
 import { transformDataObject } from "./capitalize-settings";
+import { isAdvanceAmountValid, ADVANCE_AMOUNT_ERROR_MESSAGE } from "./utils";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -649,6 +650,14 @@ export async function saveService(
   const serviceAmount = data.serviceAmount ?? 0;
   const amountReceived = data.amountReceived ?? 0;
   const advancePayment = data.advancePayment ?? 0;
+  const effAdvance = advancePayment || amountReceived;
+
+  if (serviceAmount > 0 && !isAdvanceAmountValid(serviceAmount, effAdvance)) {
+    throw new Error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+  } else if (serviceAmount === 0 && effAdvance > 0) {
+    throw new Error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+  }
+
   const pendingAmount = Math.max(0, serviceAmount - amountReceived - advancePayment);
   const progress = getProgressFromStatus(data.taskStatus);
 

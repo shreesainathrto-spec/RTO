@@ -110,7 +110,7 @@ import {
   type TaskSubtask,
 } from "@/lib/tasks";
 import { generateTaskPDF, printWindow } from "@/lib/pdfGenerator";
-import { cn } from "@/lib/utils";
+import { cn, compareAppointmentDatesDescending, parseAppointmentDateToTime } from "@/lib/utils";
 import { DeleteTaskDialog } from "@/components/DeleteTaskDialog";
 import { toast } from "sonner";
 import { ApplicationTypeBadge } from "@/components/ApplicationTypeBadge";
@@ -936,15 +936,29 @@ function TasksPage() {
 
     const sorted = [...list];
     sorted.sort((a, b) => {
-      if (sort === "latest") return +new Date(b.createdAt) - +new Date(a.createdAt);
-      if (sort === "oldest") return +new Date(a.createdAt) - +new Date(b.createdAt);
-      if (sort === "priority") return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+      if (sort === "priority") {
+        const pDiff = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+        if (pDiff !== 0) return pDiff;
+        return compareAppointmentDatesDescending(a, b);
+      }
       if (sort === "due") {
         const da = a.dueDate ? +new Date(a.dueDate) : Infinity;
         const db = b.dueDate ? +new Date(b.dueDate) : Infinity;
-        return da - db;
+        if (da !== db) return da - db;
+        return compareAppointmentDatesDescending(a, b);
       }
-      return 0;
+      if (sort === "oldest") {
+        const timeA = parseAppointmentDateToTime(a.appointmentDate);
+        const timeB = parseAppointmentDateToTime(b.appointmentDate);
+        if (timeA !== timeB) {
+          if (timeA === -Infinity) return 1;
+          if (timeB === -Infinity) return -1;
+          return timeA - timeB;
+        }
+        return +new Date(a.createdAt || 0) - +new Date(b.createdAt || 0);
+      }
+      // "latest" / default order: Latest Appointment Date -> Oldest Appointment Date
+      return compareAppointmentDatesDescending(a, b);
     });
     console.log("🐛 [DEBUG TASKS] Filtered List Count:", sorted.length);
     console.log("🐛 [DEBUG TASKS] --- Filtering End ---");
@@ -1168,6 +1182,7 @@ function TasksPage() {
           applicationStatus: "COMPLETED",
           rtoReceiptNo: String(rtoReceiptAmountVal),
           rtoReceiptAmount: rtoReceiptAmountVal,
+          appointmentDate: vahaanAppointmentDate || undefined,
           updatedAt: new Date().toISOString(),
         }).catch(() => {});
       }
@@ -1430,6 +1445,9 @@ function TasksPage() {
             rtoReceiptNo: String(expNum),
             updatedAt: new Date().toISOString(),
           };
+          if (completeAppointmentDate) {
+            appUpdates.appointmentDate = completeAppointmentDate;
+          }
           if (completeNewDob) {
             appUpdates["licenseDetails.dateOfBirth"] = completeNewDob;
           }

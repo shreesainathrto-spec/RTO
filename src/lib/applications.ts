@@ -17,6 +17,7 @@ import { removeUndefined } from "./records";
 import { getSession } from "./auth";
 import { syncInvoice } from "./billing";
 import { saveClient } from "./hierarchy";
+import { isAdvanceAmountValid, ADVANCE_AMOUNT_ERROR_MESSAGE } from "./utils";
 
 export const APPLICATIONS_COL = "registry_applications_v1";
 export const VEHICLES_CENTRIC_COL = "registry_vehicles_master_v1";
@@ -593,6 +594,22 @@ export async function saveApplicationAndVehicle(
 
   const totAmt = Number(appData.amount) || 0;
   const advAmt = Number(appData.totalPaid) || 0;
+
+  // Strict persistence validation: advance must always be strictly less than total
+  if (!isAdvanceAmountValid(totAmt, advAmt)) {
+    throw new Error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+  }
+
+  if (appData.serviceAccounting) {
+    for (const [srvKey, srvItem] of Object.entries(appData.serviceAccounting)) {
+      const sTot = Number((srvItem as any)?.totalAmount) || 0;
+      const sAdv = Number((srvItem as any)?.advancePayment ?? (srvItem as any)?.advanceAmount) || 0;
+      if (!isAdvanceAmountValid(sTot, sAdv)) {
+        throw new Error(`${ADVANCE_AMOUNT_ERROR_MESSAGE} (${srvKey})`);
+      }
+    }
+  }
+
   const remAmt = typeof appData.pendingAmount === "number" ? appData.pendingAmount : Math.max(0, totAmt - advAmt);
   const pStatus: "Paid" | "Partially Paid" | "Pending" = remAmt <= 0 ? "Paid" : advAmt > 0 ? "Partially Paid" : "Pending";
   const servicesList = appData.services || [];

@@ -17,6 +17,7 @@ import { transformDataObject } from "./capitalize-settings";
 import { saveAccountingRecord } from "./applications";
 import { syncInvoice } from "./billing";
 import { saveClient } from "./hierarchy";
+import { isAdvanceAmountValid, ADVANCE_AMOUNT_ERROR_MESSAGE } from "./utils";
 
 export const DRIVING_SCHOOL_COL = "DrivingSchoolApplications";
 export const DRIVING_SCHOOL_VEHICLES_COL = "DrivingSchoolVehicles";
@@ -117,6 +118,11 @@ export async function saveDrivingSchoolApplication(
 
   const totFee = Number(appData.totalCourseFees) || 0;
   const advFee = Number(appData.advancePaid) || 0;
+
+  if (!isAdvanceAmountValid(totFee, advFee)) {
+    throw new Error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+  }
+
   const remFee = Math.max(0, totFee - advFee);
   const pStatus: "Paid" | "Partial" | "Pending" =
     remFee <= 0 && totFee > 0 ? "Paid" : advFee > 0 ? "Partial" : "Pending";

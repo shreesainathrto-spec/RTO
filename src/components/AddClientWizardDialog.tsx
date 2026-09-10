@@ -42,6 +42,7 @@ import {
   type Service,
 } from "@/lib/hierarchy";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/records";
+import { isAdvanceAmountValid, ADVANCE_AMOUNT_ERROR_MESSAGE } from "@/lib/utils";
 
 interface AddClientWizardDialogProps {
   open: boolean;
@@ -285,6 +286,18 @@ export function AddClientWizardDialog({
       const serviceAmount = Number(serviceForm.serviceAmount) || 0;
       const amountReceived = Number(serviceForm.amountReceived) || 0;
       const advancePayment = Number(serviceForm.advancePayment) || 0;
+      const effAdvance = advancePayment || amountReceived;
+
+      if (serviceAmount > 0 && !isAdvanceAmountValid(serviceAmount, effAdvance)) {
+        toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+        setSaving(false);
+        return;
+      } else if (serviceAmount === 0 && effAdvance > 0) {
+        toast.error(ADVANCE_AMOUNT_ERROR_MESSAGE);
+        setSaving(false);
+        return;
+      }
+
       const pendingAmount = Math.max(0, serviceAmount - amountReceived - advancePayment);
 
       const newService: Service = {
