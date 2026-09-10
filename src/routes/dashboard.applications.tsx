@@ -2895,10 +2895,11 @@ function ApplicationFormModal({
     let totalAmt = 0;
     let totalAdv = 0;
 
-    const extraChallanAmt = parseFloat(challanAmount) || 0;
+    const isVahaan = activeSubModule === "services";
+    const extraChallanAmt = isVahaan ? (parseFloat(challanAmount) || 0) : 0;
 
     if (activeSubModule === "insurance") {
-      totalAmt = (Number(insTotalFees) || 0) + extraChallanAmt;
+      totalAmt = Number(insTotalFees) || 0;
       totalAdv = Number(insAdvancePayment) || 0;
     } else {
       Object.values(serviceAccountingMap).forEach((item) => {
@@ -3360,8 +3361,8 @@ function ApplicationFormModal({
           dueDate,
           reminder,
           priority,
-          challanQty: parseInt(challanQty) || 0,
-          challanAmount: parseFloat(challanAmount) || 0,
+          challanQty: activeSubModule === "services" ? (parseInt(challanQty) || 0) : undefined,
+          challanAmount: activeSubModule === "services" ? (parseFloat(challanAmount) || 0) : undefined,
           createTaskAuto,
           templateId: selectedTemplateId || undefined,
           documents: uploadedDocs,
@@ -5366,33 +5367,6 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Quantity</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 4"
-                        value={challanQty}
-                        onChange={(e) => setChallanQty(e.target.value)}
-                        className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Amount (added to total)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium text-xs">₹</span>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={challanAmount}
-                          onChange={(e) => setChallanAmount(e.target.value)}
-                          className="w-full pl-7 p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">
                       EMPLOYEE REMARKS
@@ -5914,33 +5888,6 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Quantity</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 4"
-                        value={challanQty}
-                        onChange={(e) => setChallanQty(e.target.value)}
-                        className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Amount (added to total)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium text-xs">₹</span>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={challanAmount}
-                          onChange={(e) => setChallanAmount(e.target.value)}
-                          className="w-full pl-7 p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">
                       EMPLOYEE REMARKS
@@ -6533,33 +6480,6 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Quantity</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 4"
-                        value={challanQty}
-                        onChange={(e) => setChallanQty(e.target.value)}
-                        className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Amount (added to total)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium text-xs">₹</span>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={challanAmount}
-                          onChange={(e) => setChallanAmount(e.target.value)}
-                          className="w-full pl-7 p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">
                       EMPLOYEE NOTES
@@ -7129,33 +7049,6 @@ function ApplicationFormModal({
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Quantity</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 4"
-                        value={challanQty}
-                        onChange={(e) => setChallanQty(e.target.value)}
-                        className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-semibold text-orange-700 block mb-1 uppercase">Challan Amount (added to total)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 font-medium text-xs">₹</span>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={challanAmount}
-                          onChange={(e) => setChallanAmount(e.target.value)}
-                          className="w-full pl-7 p-2.5 bg-orange-50 border border-orange-200 rounded-xl font-medium text-slate-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   <div>
                     <label className="font-semibold text-slate-700 block mb-1">EMPLOYEE REMARKS</label>
                     <textarea
