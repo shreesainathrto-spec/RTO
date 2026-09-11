@@ -532,6 +532,7 @@ function AccountingDashboardPage() {
       const isLicense = s.serviceType === "License New" || s.serviceType === "License Renew";
       const vehicle = s.vehicleId ? v2Vehicles.find((v) => v.id === s.vehicleId) : null;
       const vehicleNum = vehicle?.vehicleNumber || (s as any).vehicleNumber || (isLicense ? "Personal Service" : "Unassigned Vehicle");
+      const normVeh = vehicleNum ? vehicleNum.replace(/\s+/g, "").toUpperCase() : "";
       const clientId = s.clientId || vehicle?.clientId || "";
       if (clientId) {
         clientsWithServices.add(clientId);
@@ -541,33 +542,86 @@ function AccountingDashboardPage() {
       const clientName = client?.name || s.clientName || "Unknown Client";
       const clientMobile = client?.mobile || client?.mo || s.clientMobile || "";
 
+      // Match parent application if exists
+      const matchingApp = applications.find(
+        (a) =>
+          (s as any).applicationDocId === a.id ||
+          (s as any).applicationId === a.id ||
+          (s as any).applicationId === a.applicationId ||
+          (s.vehicleId && a.vehicleId === s.vehicleId) ||
+          (normVeh && normVeh !== "UNASSIGNEDVEHICLE" && normVeh !== "PERSONALSERVICE" && a.vehicleNumber && a.vehicleNumber.replace(/\s+/g, "").toUpperCase() === normVeh)
+      );
+
+      // Multi-key accounting record lookup
+      const acc =
+        accountingMap.get(s.id) ||
+        accountingMap.get((s as any).applicationDocId) ||
+        accountingMap.get((s as any).applicationId) ||
+        accountingMap.get((s as any).invoiceId) ||
+        (matchingApp ? accountingMap.get(matchingApp.id) || accountingMap.get(matchingApp.applicationId) : undefined) ||
+        (normVeh ? accountingMap.get(normVeh) : undefined) ||
+        (clientId ? accountingMap.get(clientId) : undefined);
+
+      // Determine subModule
+      const srvTypeLower = (s.serviceType || "").toLowerCase();
+      let subModule = (s as any).subModule || matchingApp?.subModule;
+      if (!subModule) {
+        if (srvTypeLower.includes("licence") || srvTypeLower.includes("license") || srvTypeLower.includes("learning") || srvTypeLower.includes("dl") || srvTypeLower.includes("ll")) {
+          subModule = "licence";
+        } else if (srvTypeLower.includes("form 5") || srvTypeLower.includes("form5") || srvTypeLower.includes("hgv")) {
+          subModule = "form5";
+        } else if (srvTypeLower.includes("insurance")) {
+          subModule = "insurance";
+        } else if (srvTypeLower.includes("driving school") || srvTypeLower.includes("ds-")) {
+          subModule = "driving_school";
+        } else {
+          subModule = "services";
+        }
+      }
+
       // Unique accounting row key per vehicle/service
       const groupKey = isLicense ? `license-${s.id}` : (s.vehicleId ? `veh-${s.vehicleId}` : `client-${clientId}-${vehicleNum}`);
 
-      const amt = s.serviceAmount || 0;
-      const rec = (s.amountReceived || 0) + (s.advancePayment || 0);
+      const rawAmt = (s as any).serviceAmount ?? (s as any).totalCharges ?? (s as any).amount ?? (s as any).totalAmount ?? (s as any).fee ?? acc?.totalCharges ?? acc?.totalPayment ?? matchingApp?.totalFee ?? matchingApp?.amount ?? 0;
+      const amt = Number(rawAmt) || 0;
+
+      const rawRec = (s as any).amountReceived ?? (s as any).advancePayment ?? (s as any).advancePaid ?? (s as any).advanceAmount ?? (s as any).totalPaid ?? acc?.advancePaid ?? acc?.advancePayment ?? matchingApp?.totalAdvance ?? matchingApp?.totalPaid ?? 0;
+      const rec = Number(rawRec) || 0;
+
       const bal = Math.max(0, amt - rec);
-      const colDate = s.collectionDate || s.dueDate || "";
+      const colDate = s.collectionDate || s.dueDate || (s as any).expiryDate || matchingApp?.expiryDate || (s as any).createdAt?.slice(0, 10) || "";
+
+      const rawRtoRec = (s as any).rtoReceipt ?? (s as any).rtoReceiptAmount ?? acc?.rtoReceipt ?? acc?.rtoReceiptAmount ?? matchingApp?.rtoReceiptAmount ?? 0;
+      const rtoRec = Number(rawRtoRec) || 0;
+
+      const rawRtoExp = (s as any).rtoExpense ?? acc?.rtoExpense ?? matchingApp?.rtoExpense ?? 0;
+      const rtoExp = Number(rawRtoExp) || 0;
+
+      const rawEchallan = (s as any).eChallanAmount ?? acc?.eChallanAmount ?? matchingApp?.eChallanAmount ?? 0;
+      const echallan = Number(rawEchallan) || 0;
 
       if (!vehicleGroups.has(groupKey)) {
         vehicleGroups.set(groupKey, {
           id: groupKey,
+          subModule: subModule,
           vehicleId: s.vehicleId || "",
-          clientId: clientId,
+          clientId: clientId || matchingApp?.id || s.id,
           clientName: clientName,
           clientMobile: clientMobile,
           vehicleNumber: vehicleNum,
-          invoiceId: s.invoiceId || s.id,
-          invoiceNumber: s.invoiceNumber || "Services Batch",
+          invoiceId: (s as any).applicationDocId || s.invoiceId || matchingApp?.id || s.id,
+          invoiceNumber: s.invoiceNumber || (s as any).applicationNumber || matchingApp?.applicationNumber || "Services Batch",
           totalAmount: 0,
           totalReceived: 0,
           totalOutstanding: 0,
           totalEChallan: 0,
+          totalRtoReceipt: 0,
+          totalRtoExpense: 0,
           collectionDate: colDate,
           askBhaylubha: false,
-          assignedEmployee: s.assignedStaff || client?.assignee || "—",
+          assignedEmployee: s.assignedStaff || (s as any).assignedEmployee || (s as any).assignedEmployeeName || matchingApp?.assignedEmployeeName || client?.assignee || "—",
           services: [],
-          hasInvoice: !!s.invoiceNumber,
+          hasInvoice: !!(s.invoiceNumber || (s as any).applicationNumber || matchingApp?.applicationNumber),
         });
       }
 
@@ -575,13 +629,15 @@ function AccountingDashboardPage() {
       group.totalAmount += amt;
       group.totalReceived += rec;
       group.totalOutstanding += bal;
-      group.totalEChallan += (s as any).eChallanAmount || 0;
+      group.totalEChallan += echallan;
+      group.totalRtoReceipt += rtoRec;
+      group.totalRtoExpense += rtoExp;
 
       if (s.askBhaylubha) group.askBhaylubha = true;
-      if (s.invoiceNumber) {
+      if (s.invoiceNumber || (s as any).applicationNumber) {
         group.hasInvoice = true;
-        group.invoiceNumber = s.invoiceNumber;
-        group.invoiceId = s.invoiceId || s.id;
+        group.invoiceNumber = s.invoiceNumber || (s as any).applicationNumber;
+        group.invoiceId = (s as any).applicationDocId || s.invoiceId || s.id;
       }
       if (colDate && (!group.collectionDate || colDate > group.collectionDate)) {
         group.collectionDate = colDate;
@@ -593,24 +649,30 @@ function AccountingDashboardPage() {
         amount: amt,
         received: rec,
         outstanding: bal,
-        status: s.taskStatus || "Not Started",
+        status: s.taskStatus || (s as any).status || "Not Started",
         dueDate: colDate,
-        eChallanAmount: (s as any).eChallanAmount || 0,
+        eChallanAmount: echallan,
       });
     });
 
     const rows: any[] = [];
     vehicleGroups.forEach((group) => {
-      const acc = accountingMap.get(group.invoiceId) || accountingMap.get(group.id);
-      const rtoReceipt = acc?.rtoReceipt !== undefined ? Number(acc.rtoReceipt) : 0;
-      const rtoExpense = acc?.rtoExpense !== undefined ? Number(acc.rtoExpense) : 0;
-      const totalCharges = acc?.totalCharges !== undefined ? Number(acc.totalCharges) : group.totalAmount;
-      const advancePaid = acc?.advancePaid !== undefined ? Number(acc.advancePaid) : group.totalReceived;
+      const normVeh = group.vehicleNumber ? group.vehicleNumber.replace(/\s+/g, "").toUpperCase() : "";
+      const acc =
+        accountingMap.get(group.invoiceId) ||
+        accountingMap.get(group.id) ||
+        (normVeh ? accountingMap.get(normVeh) : undefined) ||
+        (group.clientId ? accountingMap.get(group.clientId) : undefined);
+
+      const rtoReceipt = acc?.rtoReceipt !== undefined ? Number(acc.rtoReceipt) : group.totalRtoReceipt;
+      const rtoExpense = acc?.rtoExpense !== undefined ? Number(acc.rtoExpense) : group.totalRtoExpense;
+      const totalCharges = acc?.totalCharges !== undefined && Number(acc.totalCharges) > 0 ? Number(acc.totalCharges) : group.totalAmount;
+      const advancePaid = acc?.advancePaid !== undefined && Number(acc.advancePaid) > 0 ? Number(acc.advancePaid) : group.totalReceived;
       const outstanding = Math.max(0, totalCharges - advancePaid);
       const profit = outstanding - rtoReceipt - rtoExpense;
 
       const paymentStatus =
-        outstanding === 0
+        outstanding === 0 && totalCharges > 0
           ? "Paid"
           : advancePaid > 0
             ? "Partially Paid"

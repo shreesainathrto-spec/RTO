@@ -1090,7 +1090,7 @@ function TasksPage() {
     }
 
     try {
-      const appDocId = (vahaanCompleteTask as any).applicationDocId || vahaanCompleteTask.recordId || vahaanCompleteTask.id.replace("task-app-", "");
+      let appDocId = (vahaanCompleteTask as any).applicationDocId || (vahaanCompleteTask as any).parentApplicationId || vahaanCompleteTask.recordId || vahaanCompleteTask.id.replace("task-app-", "");
       const rtoReceiptAmountVal = parseFloat(vahaanRtoReceiptNo.trim()) || 0;
       const eChallanAmountVal = parseFloat(vahaanEChallanAmount.trim()) || 0;
       const challanQtyVal = parseInt(vahaanChallanQty.trim()) || 0;
@@ -1104,6 +1104,16 @@ function TasksPage() {
         }
       }
 
+      // If not found by doc id, attempt lookup by applicationId or vehicleNumber
+      if (!appData.id && vahaanCompleteTask.applicationId) {
+        const qApp = query(collection(db, "registry_applications_v1"), where("applicationId", "==", vahaanCompleteTask.applicationId.trim()));
+        const snapApp = await getDocs(qApp);
+        if (!snapApp.empty) {
+          appDocId = snapApp.docs[0].id;
+          appData = snapApp.docs[0].data();
+        }
+      }
+
       let accData: any = {};
       if (appDocId) {
         const accSnap = await getDoc(doc(db, "registry_accounting", appDocId));
@@ -1113,16 +1123,24 @@ function TasksPage() {
       }
 
       const subModule = vahaanCompleteTask.subModule || appData.subModule || (appData.licenseDetails ? "licence" : "services");
+      const destServiceId = (vahaanCompleteTask as any).sourceTaskId || ((vahaanCompleteTask.id && !vahaanCompleteTask.id.startsWith("task-app-")) ? vahaanCompleteTask.id : appDocId ? `service-${appDocId}` : vahaanCompleteTask.id);
 
-      const serviceRef = doc(db, "registry_services_v2", vahaanCompleteTask.id);
+      const totalCharges = Number(accData.totalCharges ?? accData.totalPayment ?? appData.amount ?? (vahaanCompleteTask as any).totalCharges ?? 0) || 0;
+      const advancePaid = Number(accData.advancePaid ?? accData.advancePayment ?? appData.totalPaid ?? (vahaanCompleteTask as any).advancePaid ?? 0) || 0;
+      const outstanding = Math.max(0, totalCharges - advancePaid);
+      const paymentStatus = accData.paymentStatus || appData.paymentStatus || (outstanding <= 0 && totalCharges > 0 ? "Paid" : advancePaid > 0 ? "Partial" : "Pending");
+
+      const serviceRef = doc(db, "registry_services_v2", destServiceId);
       const serviceRecord = removeUndefined({
-        id: vahaanCompleteTask.id,
-        serviceId: vahaanCompleteTask.id,
+        id: destServiceId,
+        serviceId: destServiceId,
+        sourceTaskId: vahaanCompleteTask.id,
         status: "Completed",
         taskStatus: "Completed",
         done: true,
         appointmentDate: vahaanAppointmentDate,
         rtoReceiptAmount: rtoReceiptAmountVal,
+        rtoReceipt: rtoReceiptAmountVal,
         rtoReceiptNo: String(rtoReceiptAmountVal),
         eChallanAmount: eChallanAmountVal,
         rtoExpense: rtoReceiptAmountVal + eChallanAmountVal,
@@ -1131,6 +1149,7 @@ function TasksPage() {
         updatedAt: new Date().toISOString(),
         createdAt: vahaanCompleteTask.createdAt || appData.createdAt || new Date().toISOString(),
         
+        applicationDocId: appDocId || "",
         clientId: appDocId || vahaanCompleteTask.clientId || vahaanCompleteTask.recordId || "",
         clientName: vahaanCompleteTask.clientName || appData.ownerName || appData.clientName || "",
         ownerName: appData.ownerName || vahaanCompleteTask.clientName || "",
@@ -1146,7 +1165,7 @@ function TasksPage() {
         
         serviceName: vahaanCompleteTask.serviceName || (appData.services && appData.services.join(", ")) || vahaanCompleteTask.title || "",
         serviceType: vahaanCompleteTask.serviceType || vahaanCompleteTask.serviceName || "",
-        services: appData.services || [],
+        services: appData.services || (vahaanCompleteTask as any).services || [],
         
         assignee: vahaanCompleteTask.assignee || "",
         assignedEmployeeId: vahaanCompleteTask.assignedEmployeeId || "",
@@ -1157,10 +1176,15 @@ function TasksPage() {
         
         activity: vahaanCompleteTask.activity || [],
         activityLogs: vahaanCompleteTask.activityLogs || [],
-        amount: accData.totalPayment || appData.amount || 0,
-        totalPaid: accData.advancePayment || appData.totalPaid || 0,
-        pendingAmount: accData.remainingPayment || appData.pendingAmount || 0,
-        paymentStatus: accData.paymentStatus || appData.paymentStatus || "Pending",
+        totalCharges: totalCharges,
+        advancePaid: advancePaid,
+        serviceAmount: totalCharges,
+        amountReceived: advancePaid,
+        advancePayment: advancePaid,
+        amount: totalCharges,
+        totalPaid: advancePaid,
+        pendingAmount: outstanding,
+        paymentStatus: paymentStatus,
       });
 
       await setDoc(serviceRef, serviceRecord, { merge: true });
@@ -1174,21 +1198,26 @@ function TasksPage() {
           challanAmount: challanAmountVal,
           employeeName: vahaanCompleteTask.assignee || vahaanCompleteTask.assignedEmployeeName
         }).catch(console.error);
-      }
 
-      if (appDocId) {
         const appRef = doc(db, "registry_applications_v1", appDocId);
         await updateDoc(appRef, {
           applicationStatus: "COMPLETED",
           rtoReceiptNo: String(rtoReceiptAmountVal),
           rtoReceiptAmount: rtoReceiptAmountVal,
+          rtoExpense: rtoReceiptAmountVal + eChallanAmountVal,
+          eChallanAmount: eChallanAmountVal,
           appointmentDate: vahaanAppointmentDate || undefined,
           updatedAt: new Date().toISOString(),
         }).catch(() => {});
       }
 
       const { deleteDoc } = await import("firebase/firestore");
-      await deleteDoc(doc(db, "registry_tasks", vahaanCompleteTask.id));
+      if (vahaanCompleteTask.id && !vahaanCompleteTask.id.startsWith("task-app-")) {
+        await deleteDoc(doc(db, "registry_tasks", vahaanCompleteTask.id)).catch(() => {});
+      }
+      if ((vahaanCompleteTask as any).taskId && (vahaanCompleteTask as any).taskId !== vahaanCompleteTask.id && !(vahaanCompleteTask as any).taskId.startsWith("task-app-")) {
+        await deleteDoc(doc(db, "registry_tasks", (vahaanCompleteTask as any).taskId)).catch(() => {});
+      }
 
       toast.success("Task completed!");
       setShowVahaanCompleteModal(false);
@@ -1399,6 +1428,7 @@ function TasksPage() {
         remarks: completeRemarks.trim(),
         notes: completeRemarks.trim(),
 
+        applicationDocId: appDocId || "",
         clientId: appDocId || completeModalTask.clientId || completeModalTask.recordId || "",
         clientName: completeModalTask.clientName || appData.ownerName || appData.clientName || "",
         ownerName: appData.ownerName || completeModalTask.clientName || "",
@@ -1414,7 +1444,7 @@ function TasksPage() {
         
         serviceName: completeModalTask.serviceName || (appData.services && appData.services.join(", ")) || completeModalTask.title || "",
         serviceType: completeModalTask.serviceType || completeModalTask.serviceName || "",
-        services: appData.services || [],
+        services: appData.services || (completeModalTask as any).services || [],
         
         assignee: completeModalTask.assignee || "",
         assignedEmployeeId: completeModalTask.assignedEmployeeId || "",
@@ -1425,6 +1455,11 @@ function TasksPage() {
         
         activity: completeModalTask.activity || [],
         activityLogs: completeModalTask.activityLogs || [],
+        totalCharges: totalCharges,
+        advancePaid: advancePaid,
+        serviceAmount: totalCharges,
+        amountReceived: advancePaid,
+        advancePayment: advancePaid,
         amount: totalCharges,
         totalPaid: advancePaid,
         pendingAmount: outstanding,

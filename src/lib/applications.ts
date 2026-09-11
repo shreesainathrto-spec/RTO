@@ -74,6 +74,19 @@ export function subscribeAccountingRecords(
         if (data.applicationDocId) {
           map.set(data.applicationDocId, rec);
         }
+        if (data.clientId) {
+          map.set(data.clientId, rec);
+        }
+        if (data.taskId) {
+          map.set(data.taskId, rec);
+        }
+        if (data.vehicleNumber) {
+          map.set(data.vehicleNumber, rec);
+          const cleanVeh = data.vehicleNumber.trim().toUpperCase().replace(/[\s-]/g, "");
+          if (cleanVeh) {
+            map.set(cleanVeh, rec);
+          }
+        }
       });
       callback(map);
     },
@@ -1112,6 +1125,10 @@ export async function saveApplicationAndVehicle(
           registrationRenewalExpiryDate: appData.registrationRenewalExpiryDate || "",
           totalCharges: totAmt,
           advancePaid: advAmt,
+          serviceAmount: totAmt,
+          amountReceived: advAmt,
+          advancePayment: advAmt,
+          pendingAmount: outstanding,
           subModule: appData.subModule || "services",
           licenseDetails: appData.licenseDetails,
         });

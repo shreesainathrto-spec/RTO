@@ -733,8 +733,16 @@ export function ServiceDashboard({
 
       const combined = [...docs1, ...docs2];
       const completedList = combined.filter((t: any) => {
+        const cleanVeh = t.vehicleNumber || t.vehicleId || "";
+        const cleanVehNo = cleanVeh ? cleanVeh.trim().toUpperCase().replace(/[\s-]/g, "") : "";
         const targetAppId = t.applicationDocId || t.applicationId || t.recordId || t.clientId || t.id.replace("task-app-", "");
-        const app = appsMap.get(targetAppId) || apps.find((a: any) => a.id === t.id || a.id === t.recordId || a.id === t.applicationDocId);
+        const app = appsMap.get(targetAppId) || apps.find((a: any) =>
+          a.id === t.id ||
+          a.id === t.recordId ||
+          a.id === t.applicationDocId ||
+          (t.applicationId && a.applicationId && a.applicationId.trim().toUpperCase() === t.applicationId.trim().toUpperCase()) ||
+          (cleanVehNo && a.vehicleNumber && a.vehicleNumber.trim().toUpperCase().replace(/[\s-]/g, "") === cleanVehNo)
+        );
         const resolvedSubModule = app?.subModule || (app?.licenseDetails ? "licence" : t.subModule || "services");
 
         const s = (t.status || t.taskStatus || "").toUpperCase();
@@ -770,15 +778,15 @@ export function ServiceDashboard({
           });
         }
 
-        // Filter out completed tasks if their parent application has been deleted or is missing
-        if (!app || app.isDeleted) {
+        // Filter out completed tasks if their parent application has been deleted explicitly
+        if (app?.isDeleted) {
           return;
         }
 
         const acc = accMapData.get(targetAppId) || accMapData.get(item.applicationId || "") || (app ? accMapData.get(app.id) || accMapData.get(app.applicationId) : null);
 
-        const totalAmt = acc?.totalPayment ?? app?.amount ?? item.amount ?? item.totalAmount ?? 0;
-        const advAmt = acc?.advancePayment ?? app?.totalPaid ?? item.totalPaid ?? item.advanceAmount ?? 0;
+        const totalAmt = acc?.totalPayment ?? app?.amount ?? item.amount ?? item.totalAmount ?? item.totalCharges ?? item.serviceAmount ?? 0;
+        const advAmt = acc?.advancePayment ?? app?.totalPaid ?? item.totalPaid ?? item.advanceAmount ?? item.advancePaid ?? item.amountReceived ?? 0;
         const remAmt = acc?.remainingPayment ?? (app ? (typeof app.pendingAmount === "number" ? app.pendingAmount : Math.max(0, totalAmt - advAmt)) : item.pendingAmount ?? Math.max(0, totalAmt - advAmt));
         const rawStatus = acc?.paymentStatus ?? app?.paymentStatus ?? item.paymentStatus ?? (remAmt <= 0 ? "Paid" : advAmt > 0 ? "Partially Paid" : "Pending");
         const pStatus = rawStatus === "Partially Paid" ? "Partial" : rawStatus;
@@ -809,7 +817,7 @@ export function ServiceDashboard({
           serviceName: (app?.services && app.services.join(", ")) || item.serviceName || item.serviceType || "",
           reference: app?.reference || app?.applicationId || item.reference || item.title || item.id,
           assignedEmployeeName: app?.assignedEmployeeName || item.assignedEmployeeName || item.assignee || "Unassigned",
-          rtoExpense: item.rtoExpense || 0,
+          rtoExpense: item.rtoExpense || acc?.rtoExpense || app?.rtoExpense || 0,
           amount: totalAmt,
           totalPaid: advAmt,
           pendingAmount: remAmt,
@@ -896,7 +904,7 @@ export function ServiceDashboard({
   const filteredCompletedTasks = useMemo(() => {
     let list = completedTasks;
     if (activeSubModule === "driving_school") {
-      list = list.filter((t: any) => t.subModule === "driving_school");
+      list = list.filter((t: any) => t.subModule === "driving_school" || (t.applicationType || "").toLowerCase() === "driving_school");
     } else if (activeSubModule === "licence") {
       list = list.filter((t: any) => {
         if (t.subModule) return t.subModule === "licence";
@@ -907,10 +915,16 @@ export function ServiceDashboard({
         if (t.subModule) return t.subModule === "insurance";
         return (t.applicationType || "").toLowerCase() === "insurance";
       });
+    } else if (activeSubModule === "form5") {
+      list = list.filter((t: any) => {
+        if (t.subModule) return t.subModule === "form5";
+        return (t.applicationType || "").toLowerCase() === "form5" || (t.applicationType || "").toLowerCase() === "form 5";
+      });
     } else {
       list = list.filter((t: any) => {
-        if (t.subModule) return t.subModule === "services";
-        return (t.applicationType || "").toLowerCase() !== "licence" && (t.applicationType || "").toLowerCase() !== "insurance" && (t.applicationType || "").toLowerCase() !== "driving_school";
+        if (t.subModule) return t.subModule === "services" || t.subModule === "vahaan";
+        const appType = (t.applicationType || "").toLowerCase();
+        return appType !== "licence" && appType !== "insurance" && appType !== "driving_school" && appType !== "form5" && appType !== "form 5";
       });
     }
 
@@ -930,6 +944,9 @@ export function ServiceDashboard({
         }
         if (filterStatus === "ON HOLD") {
           return rawStatus === "ON HOLD" || rawStatus === "ONHOLD";
+        }
+        if (filterStatus === "COMPLETED") {
+          return rawStatus === "COMPLETED" || rawStatus === "COMPLETE";
         }
         return rawStatus === filterStatus;
       });
