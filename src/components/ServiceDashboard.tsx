@@ -731,11 +731,39 @@ export function ServiceDashboard({
       setAppsList(apps);
       const appsMap = new Map<string, any>(apps.map((a: any) => [a.id, a]));
 
-      const combined = [...docs1, ...docs2];
+      const completedApps = apps
+        .filter((a: any) => {
+          const s = (a.applicationStatus || a.status || "").toUpperCase();
+          return ["COMPLETED", "COMPLETE", "APPROVED", "IN RTO", "INWARD", "ON HOLD", "ONHOLD", "PASS", "FAIL", "RETEST"].includes(s);
+        })
+        .map((a: any) => ({
+          id: `app-service-${a.id}`,
+          sourceCollection: "registry_applications_v1",
+          applicationDocId: a.id,
+          applicationId: a.applicationId || a.id,
+          vehicleNumber: a.vehicleNumber || "",
+          clientName: a.ownerName || a.clientName || "",
+          mobileNumber: a.mobileNumber || "",
+          serviceName: (a.services && a.services.join(", ")) || a.serviceName || "",
+          status: a.applicationStatus === "COMPLETED" ? "Completed" : (a.applicationStatus || "Completed"),
+          taskStatus: a.applicationStatus === "COMPLETED" ? "Completed" : (a.applicationStatus || "Completed"),
+          done: true,
+          appointmentDate: a.appointmentDate || "",
+          rtoReceiptAmount: a.rtoReceiptAmount || 0,
+          rtoReceiptNo: a.rtoReceiptNo || "",
+          rtoExpense: a.rtoExpense || 0,
+          eChallanAmount: a.eChallanAmount || 0,
+          subModule: a.subModule || (a.licenseDetails ? "licence" : "services"),
+          applicationType: a.applicationType || "Home",
+          licenseDetails: a.licenseDetails,
+          ...a,
+        }));
+
+      const combined = [...docs1, ...docs2, ...completedApps];
       const completedList = combined.filter((t: any) => {
         const cleanVeh = t.vehicleNumber || t.vehicleId || "";
         const cleanVehNo = cleanVeh ? cleanVeh.trim().toUpperCase().replace(/[\s-]/g, "") : "";
-        const targetAppId = t.applicationDocId || t.applicationId || t.recordId || t.clientId || t.id.replace("task-app-", "");
+        const targetAppId = t.applicationDocId || t.applicationId || t.recordId || t.clientId || t.id.replace("task-app-", "").replace("service-", "").replace("app-service-", "");
         const app = appsMap.get(targetAppId) || apps.find((a: any) =>
           a.id === t.id ||
           a.id === t.recordId ||
@@ -752,10 +780,10 @@ export function ServiceDashboard({
         return ["COMPLETED", "IN RTO", "INWARD", "VERIFY", "APPROVED", "ON HOLD", "ONHOLD"].includes(s);
       });
 
-      // Deduplicate by ID and enrich with Application & Accounting record details
+      // Deduplicate by Application / Service unique key and enrich with Application & Accounting details
       const uniqueMap = new Map();
       completedList.forEach((item: any) => {
-        const targetAppId = item.applicationDocId || item.applicationId || item.recordId || item.clientId || item.id.replace("task-app-", "");
+        const targetAppId = item.applicationDocId || item.applicationId || item.recordId || item.clientId || item.id.replace("task-app-", "").replace("service-", "").replace("app-service-", "");
         let app: any = appsMap.get(targetAppId);
 
         const cleanVeh = item.vehicleNumber || item.vehicleId || "";
@@ -772,7 +800,7 @@ export function ServiceDashboard({
               a.id === item.id ||
               a.id === item.recordId ||
               a.id === item.applicationDocId ||
-              (item.id && item.id.replace("task-app-", "") === a.id) ||
+              (item.id && item.id.replace("task-app-", "").replace("service-", "").replace("app-service-", "") === a.id) ||
               (cleanVehNo && aVeh === cleanVehNo)
             );
           });
@@ -780,6 +808,13 @@ export function ServiceDashboard({
 
         // Filter out completed tasks if their parent application has been deleted explicitly
         if (app?.isDeleted) {
+          return;
+        }
+
+        const primaryKey = app?.id || item.applicationDocId || (item.applicationId ? `app-${item.applicationId}` : item.id);
+
+        // If record already exists from registry_services_v2 or registry_tasks, keep the more specific one
+        if (uniqueMap.has(primaryKey) && item.sourceCollection === "registry_applications_v1") {
           return;
         }
 
@@ -836,7 +871,7 @@ export function ServiceDashboard({
           registrationRenewalExpiryDate: app?.registrationRenewalExpiryDate || item.registrationRenewalExpiryDate || v.registrationRenewalExpiryDate || v.registrationDetails?.registrationValidity || "—",
           groupName: resolvedGroupName,
         };
-        uniqueMap.set(item.id, enriched);
+        uniqueMap.set(primaryKey, enriched);
       });
       const uniqueCompleted = Array.from(uniqueMap.values());
 

@@ -692,6 +692,11 @@ function TasksPage() {
       const appStepHist = app.licenseDetails?.stepHistory || app.stepHistory || {};
       const appApptDate = appStepAppts[appCurrentStep] || app.appointmentDate || "";
 
+      const rawAppStatus = (app.applicationStatus || app.status || "").toUpperCase();
+      const isAppDone = rawAppStatus === "COMPLETED" || rawAppStatus === "COMPLETE" || rawAppStatus === "APPROVED";
+      const isAppHold = rawAppStatus === "ON HOLD" || rawAppStatus === "ONHOLD";
+      const appStatus = isAppDone ? "Completed" : (isAppHold ? "On Hold" : "Read");
+
       appTasks.push({
         id: taskId,
         taskId,
@@ -703,9 +708,9 @@ function TasksPage() {
         assignedEmployeeId: assignedEmp,
         assignedEmployeeName: assignedEmp,
         assignedEmployeeUid: assignedEmp,
-        status: (app.applicationStatus === "Approved" ? "Completed" : app.applicationStatus === "On Hold" ? "On Hold" : "Read") as TaskStatus,
+        status: appStatus as TaskStatus,
         priority: (app.priority || "Medium") as TaskPriority,
-        done: app.applicationStatus === "Approved",
+        done: isAppDone,
         createdAt: app.createdAt || new Date().toISOString(),
         createdBy: app.createdBy || "System",
         dueDate: app.expiryDate || "",
@@ -715,7 +720,7 @@ function TasksPage() {
         clientId: app.id,
         clientName: clientName,
         manual: false,
-        progress: app.applicationStatus === "Approved" ? 100 : 0,
+        progress: isAppDone ? 100 : 0,
         reminderMinutes: 0,
         remarks: app.remarks || "",
         applicationId: appNum,
@@ -800,8 +805,8 @@ function TasksPage() {
     });
 
     return Array.from(map.values()).filter((t: any) => {
-      const s = t.status || "";
-      const isCompleted = s === "Completed" || s === "COMPLETED" || s === "PASS" || s === "FAIL" || s === "RETEST";
+      const s = (t.status || "").trim().toUpperCase();
+      const isCompleted = s === "COMPLETED" || s === "COMPLETE" || s === "PASS" || s === "FAIL" || s === "RETEST" || t.done === true;
       return !isCompleted;
     });
   }, [tasks, v2Services, vehicles, clients, leads, applications]);
