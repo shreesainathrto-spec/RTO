@@ -1412,66 +1412,90 @@ function TasksPage() {
 
       const subModule = completeModalTask.subModule || appData.subModule || (appData.licenseDetails ? "licence" : "services");
 
-      const destServiceId = (completeModalTask as any).sourceTaskId || ((completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) ? completeModalTask.id : appDocId ? `service-${appDocId}` : completeModalTask.id);
-      const serviceRef = doc(db, "registry_services_v2", destServiceId);
-      const serviceRecord = removeUndefined({
-        id: destServiceId,
-        serviceId: destServiceId,
-        sourceTaskId: completeModalTask.id,
-        status: "Completed",
-        taskStatus: "Completed",
-        done: true,
-        appointmentDate: completeAppointmentDate,
-        rtoReceiptAmount: expNum,
-        rtoReceiptNo: String(expNum),
-        eChallanAmount: eChallanNum,
-        rtoExpense: expNum + eChallanNum,
-        challanQty: challanQtyNum,
-        challanAmount: challanAmountNum,
-        updatedAt: new Date().toISOString(),
-        createdAt: completeModalTask.createdAt || appData.createdAt || new Date().toISOString(),
-        remarks: completeRemarks.trim(),
-        notes: completeRemarks.trim(),
+      const resolvedAppType = (completeApplicationType || completeModalTask.applicationType || appData.applicationType || "").toLowerCase();
+      const resolvedSub = (subModule || "").toLowerCase();
 
-        applicationDocId: appDocId || "",
-        clientId: appDocId || completeModalTask.clientId || completeModalTask.recordId || "",
-        clientName: completeModalTask.clientName || appData.ownerName || appData.clientName || "",
-        ownerName: appData.ownerName || completeModalTask.clientName || "",
-        phone: appData.mobileNumber || completeModalTask.phone || completeModalTask.mobileNumber || "",
-        mobileNumber: appData.mobileNumber || completeModalTask.mobileNumber || "",
-        
-        vehicleId: completeModalTask.vehicleId || appData.vehicleId || "",
-        vehicleNumber: completeModalTask.vehicleNumber || appData.vehicleNumber || "",
-        
-        subModule: subModule,
-        applicationId: completeApplicationId.trim() || appData.applicationId || "",
-        applicationType: completeApplicationType || appData.applicationType || "Home",
-        
-        serviceName: completeModalTask.serviceName || (appData.services && appData.services.join(", ")) || completeModalTask.title || "",
-        serviceType: completeModalTask.serviceType || completeModalTask.serviceName || "",
-        services: appData.services || (completeModalTask as any).services || [],
-        
-        assignee: completeModalTask.assignee || "",
-        assignedEmployeeId: completeModalTask.assignedEmployeeId || "",
-        assignedEmployeeUid: completeModalTask.assignedEmployeeUid || "",
-        assignedEmployeeName: completeModalTask.assignedEmployeeName || "",
-        assignedEmployeeRole: completeModalTask.assignedEmployeeRole || "",
-        assignedStaff: completeModalTask.assignee || "",
-        
-        activity: completeModalTask.activity || [],
-        activityLogs: completeModalTask.activityLogs || [],
-        totalCharges: totalCharges,
-        advancePaid: advancePaid,
-        serviceAmount: totalCharges,
-        amountReceived: advancePaid,
-        advancePayment: advancePaid,
-        amount: totalCharges,
-        totalPaid: advancePaid,
-        pendingAmount: outstanding,
-        paymentStatus: outstanding <= 0 ? "Paid" : advancePaid > 0 ? "Partial" : "Pending",
-      });
+      // Only Vahaan and Licence are transferable into In RTO Services
+      const isTransferableToInRTO =
+        (resolvedSub === "services" ||
+         resolvedSub === "vahaan" ||
+         resolvedSub === "licence" ||
+         resolvedAppType === "licence" ||
+         resolvedAppType === "vahaan" ||
+         resolvedAppType === "home" ||
+         resolvedAppType === "vehicle") &&
+        !(resolvedSub === "insurance" ||
+          resolvedSub === "form5" ||
+          resolvedSub === "form 5" ||
+          resolvedSub === "driving_school" ||
+          resolvedAppType === "insurance" ||
+          resolvedAppType === "form 5" ||
+          resolvedAppType === "form5" ||
+          resolvedAppType === "driving school" ||
+          resolvedAppType === "driving_school");
 
-      await setDoc(serviceRef, serviceRecord, { merge: true });
+      if (isTransferableToInRTO) {
+        const destServiceId = (completeModalTask as any).sourceTaskId || ((completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) ? completeModalTask.id : appDocId ? `service-${appDocId}` : completeModalTask.id);
+        const serviceRef = doc(db, "registry_services_v2", destServiceId);
+        const serviceRecord = removeUndefined({
+          id: destServiceId,
+          serviceId: destServiceId,
+          sourceTaskId: completeModalTask.id,
+          status: "Completed",
+          taskStatus: "Completed",
+          done: true,
+          appointmentDate: completeAppointmentDate,
+          rtoReceiptAmount: expNum,
+          rtoReceiptNo: String(expNum),
+          eChallanAmount: eChallanNum,
+          rtoExpense: expNum + eChallanNum,
+          challanQty: challanQtyNum,
+          challanAmount: challanAmountNum,
+          updatedAt: new Date().toISOString(),
+          createdAt: completeModalTask.createdAt || appData.createdAt || new Date().toISOString(),
+          remarks: completeRemarks.trim(),
+          notes: completeRemarks.trim(),
+
+          applicationDocId: appDocId || "",
+          clientId: appDocId || completeModalTask.clientId || completeModalTask.recordId || "",
+          clientName: completeModalTask.clientName || appData.ownerName || appData.clientName || "",
+          ownerName: appData.ownerName || completeModalTask.clientName || "",
+          phone: appData.mobileNumber || completeModalTask.phone || completeModalTask.mobileNumber || "",
+          mobileNumber: appData.mobileNumber || completeModalTask.mobileNumber || "",
+          
+          vehicleId: completeModalTask.vehicleId || appData.vehicleId || "",
+          vehicleNumber: completeModalTask.vehicleNumber || appData.vehicleNumber || "",
+          
+          subModule: subModule,
+          applicationId: completeApplicationId.trim() || appData.applicationId || "",
+          applicationType: completeApplicationType || appData.applicationType || "Home",
+          
+          serviceName: completeModalTask.serviceName || (appData.services && appData.services.join(", ")) || completeModalTask.title || "",
+          serviceType: completeModalTask.serviceType || completeModalTask.serviceName || "",
+          services: appData.services || (completeModalTask as any).services || [],
+          
+          assignee: completeModalTask.assignee || "",
+          assignedEmployeeId: completeModalTask.assignedEmployeeId || "",
+          assignedEmployeeUid: completeModalTask.assignedEmployeeUid || "",
+          assignedEmployeeName: completeModalTask.assignedEmployeeName || "",
+          assignedEmployeeRole: completeModalTask.assignedEmployeeRole || "",
+          assignedStaff: completeModalTask.assignee || "",
+          
+          activity: completeModalTask.activity || [],
+          activityLogs: completeModalTask.activityLogs || [],
+          totalCharges: totalCharges,
+          advancePaid: advancePaid,
+          serviceAmount: totalCharges,
+          amountReceived: advancePaid,
+          advancePayment: advancePaid,
+          amount: totalCharges,
+          totalPaid: advancePaid,
+          pendingAmount: outstanding,
+          paymentStatus: outstanding <= 0 ? "Paid" : advancePaid > 0 ? "Partial" : "Pending",
+        });
+
+        await setDoc(serviceRef, serviceRecord, { merge: true });
+      }
 
       if (appDocId) {
         const appRef = doc(db, "registry_applications_v1", appDocId);
@@ -1499,15 +1523,34 @@ function TasksPage() {
       }
 
       const { deleteDoc } = await import("firebase/firestore");
-      // Delete original task from Firestore tasks collection if exists
-      if (completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) {
-        await deleteDoc(doc(db, "registry_tasks", completeModalTask.id)).catch(() => {});
-      }
-      if ((completeModalTask as any).taskId && (completeModalTask as any).taskId !== completeModalTask.id && !(completeModalTask as any).taskId.startsWith("task-app-")) {
-        await deleteDoc(doc(db, "registry_tasks", (completeModalTask as any).taskId)).catch(() => {});
+      if (isTransferableToInRTO) {
+        // Delete original task from Firestore tasks collection if exists
+        if (completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) {
+          await deleteDoc(doc(db, "registry_tasks", completeModalTask.id)).catch(() => {});
+        }
+        if ((completeModalTask as any).taskId && (completeModalTask as any).taskId !== completeModalTask.id && !(completeModalTask as any).taskId.startsWith("task-app-")) {
+          await deleteDoc(doc(db, "registry_tasks", (completeModalTask as any).taskId)).catch(() => {});
+        }
+        toast.success("Task completed and transferred to Services!");
+      } else {
+        // Non-transferable task (Insurance, Form 5, Driving School)
+        // Complete the task in registry_tasks without transferring to In RTO Services
+        if (completeModalTask.id && !completeModalTask.id.startsWith("task-app-")) {
+          await updateTask(
+            completeModalTask.id,
+            {
+              status: "Completed",
+              done: true,
+              appointmentDate: completeAppointmentDate || completeModalTask.appointmentDate || "",
+              remarks: completeRemarks.trim() || completeModalTask.remarks || "",
+            },
+            session?.username || "system",
+            "Marked task as completed"
+          );
+        }
+        toast.success("Task marked as completed!");
       }
 
-      toast.success("Task completed and transferred to Services!");
       setCompleteModalTask(null);
       setCompleteAppointmentDate("");
       setCompleteRtoExpense("");

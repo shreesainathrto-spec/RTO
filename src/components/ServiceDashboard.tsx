@@ -734,7 +734,25 @@ export function ServiceDashboard({
       const completedApps = apps
         .filter((a: any) => {
           const s = (a.applicationStatus || a.status || "").toUpperCase();
-          return ["COMPLETED", "COMPLETE", "APPROVED", "IN RTO", "INWARD", "ON HOLD", "ONHOLD", "PASS", "FAIL", "RETEST"].includes(s);
+          const isStatusCompleted = ["COMPLETED", "COMPLETE", "APPROVED", "IN RTO", "INWARD", "ON HOLD", "ONHOLD", "PASS", "FAIL", "RETEST"].includes(s);
+          if (!isStatusCompleted) return false;
+
+          const sub = (a.subModule || (a.licenseDetails ? "licence" : (a.applicationType || "").toLowerCase())).toLowerCase();
+          const appType = (a.applicationType || "").toLowerCase();
+
+          // Strictly restrict In RTO Services to Vahaan and Licence only
+          const isUnsupported =
+            sub === "insurance" ||
+            sub === "form5" ||
+            sub === "form 5" ||
+            sub === "driving_school" ||
+            appType === "insurance" ||
+            appType === "form 5" ||
+            appType === "form5" ||
+            appType === "driving school" ||
+            appType === "driving_school";
+
+          return !isUnsupported;
         })
         .map((a: any) => ({
           id: `app-service-${a.id}`,
@@ -771,10 +789,27 @@ export function ServiceDashboard({
           (t.applicationId && a.applicationId && a.applicationId.trim().toUpperCase() === t.applicationId.trim().toUpperCase()) ||
           (cleanVehNo && a.vehicleNumber && a.vehicleNumber.trim().toUpperCase().replace(/[\s-]/g, "") === cleanVehNo)
         );
-        const resolvedSubModule = app?.subModule || (app?.licenseDetails ? "licence" : t.subModule || "services");
+        const resolvedSubModule = (app?.subModule || (app?.licenseDetails ? "licence" : t.subModule || (t.licenseDetails ? "licence" : "services"))).toLowerCase();
+        const resolvedAppType = (t.applicationType || app?.applicationType || "").toLowerCase();
+
+        // Enforce restriction: Only Vahaan and Licence are In RTO Services
+        const isUnsupported =
+          resolvedSubModule === "insurance" ||
+          resolvedSubModule === "form5" ||
+          resolvedSubModule === "form 5" ||
+          resolvedSubModule === "driving_school" ||
+          resolvedAppType === "insurance" ||
+          resolvedAppType === "form 5" ||
+          resolvedAppType === "form5" ||
+          resolvedAppType === "driving school" ||
+          resolvedAppType === "driving_school";
+
+        if (isUnsupported) {
+          return false;
+        }
 
         const s = (t.status || t.taskStatus || "").toUpperCase();
-        if (resolvedSubModule === "licence") {
+        if (resolvedSubModule === "licence" || resolvedAppType === "licence") {
           return ["RTO", "PASS", "FAIL", "RETEST", "COMPLETED"].includes(s);
         }
         return ["COMPLETED", "IN RTO", "INWARD", "VERIFY", "APPROVED", "ON HOLD", "ONHOLD"].includes(s);
@@ -938,24 +973,13 @@ export function ServiceDashboard({
 
   const filteredCompletedTasks = useMemo(() => {
     let list = completedTasks;
-    if (activeSubModule === "driving_school") {
-      list = list.filter((t: any) => t.subModule === "driving_school" || (t.applicationType || "").toLowerCase() === "driving_school");
-    } else if (activeSubModule === "licence") {
+    if (activeSubModule === "licence") {
       list = list.filter((t: any) => {
         if (t.subModule) return t.subModule === "licence";
         return (t.applicationType || "").toLowerCase() === "licence";
       });
-    } else if (activeSubModule === "insurance") {
-      list = list.filter((t: any) => {
-        if (t.subModule) return t.subModule === "insurance";
-        return (t.applicationType || "").toLowerCase() === "insurance";
-      });
-    } else if (activeSubModule === "form5") {
-      list = list.filter((t: any) => {
-        if (t.subModule) return t.subModule === "form5";
-        return (t.applicationType || "").toLowerCase() === "form5" || (t.applicationType || "").toLowerCase() === "form 5";
-      });
     } else {
+      // Vahaan (services)
       list = list.filter((t: any) => {
         if (t.subModule) return t.subModule === "services" || t.subModule === "vahaan";
         const appType = (t.applicationType || "").toLowerCase();
@@ -1097,9 +1121,13 @@ export function ServiceDashboard({
         </div>
       </div>
 
-      {/* 3 Main Sub Module Services, Licence, Driving School Tabs */}
+      {/* Main Sub Module Tabs: Vahaan and Licence only */}
       <div>
-        <SubModuleTabs activeTab={activeSubModule} onChange={setActiveSubModule} />
+        <SubModuleTabs
+          activeTab={activeSubModule === "licence" ? "licence" : "services"}
+          onChange={setActiveSubModule}
+          allowedTabs={["services", "licence"]}
+        />
       </div>
 
 

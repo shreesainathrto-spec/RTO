@@ -8,6 +8,7 @@ interface SubModuleTabsProps {
   activeTab: SubModuleType;
   onChange: (tab: SubModuleType) => void;
   className?: string;
+  allowedTabs?: SubModuleType[];
 }
 
 export const SUB_MODULE_TABS: { id: SubModuleType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -18,10 +19,14 @@ export const SUB_MODULE_TABS: { id: SubModuleType; label: string; icon: React.Co
   { id: "driving_school", label: "Driving School", icon: GraduationCap },
 ];
 
-export function SubModuleTabs({ activeTab, onChange, className }: SubModuleTabsProps) {
+export function SubModuleTabs({ activeTab, onChange, className, allowedTabs }: SubModuleTabsProps) {
+  const visibleTabs = allowedTabs
+    ? SUB_MODULE_TABS.filter((tab) => allowedTabs.includes(tab.id))
+    : SUB_MODULE_TABS;
+
   return (
     <div className={cn("inline-flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/60 shadow-inner", className)}>
-      {SUB_MODULE_TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
         return (
