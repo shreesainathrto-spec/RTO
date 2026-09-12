@@ -592,6 +592,7 @@ function TasksPage() {
         mobileNumber: linkedApp?.mobileNumber || (t as any).mobileNumber || (t as any).phone || "",
         reference: linkedApp?.reference || linkedApp?.applicationId || (t as any).reference || t.id,
         groupName: linkedApp?.groupName || linkedApp?.vehicleDetails?.groupName || (linkedApp as any)?.vehicleDetails?.groupName || (t as any).groupName || "",
+        form5Details: (t as any).form5Details || linkedApp?.form5Details,
       };
     }).filter(Boolean) as Task[];
 
@@ -742,6 +743,7 @@ function TasksPage() {
         issueDate: app.createdAt || "",
         subtasks: [],
         groupName: app.groupName || app.vehicleDetails?.groupName || (app as any).vehicleDetails?.groupName || "",
+        form5Details: app.form5Details,
       } as any);
     });
 
@@ -797,6 +799,7 @@ function TasksPage() {
           vehicleNumber: existing.vehicleNumber || item.vehicleNumber,
           clientName: existing.clientName || item.clientName,
           subModule: item.subModule || existing.subModule || "services",
+          form5Details: (item as any).form5Details || (existing as any).form5Details,
         };
         map.set(key, merged);
       } else {
@@ -3923,7 +3926,6 @@ function TaskFormDialog({
             </div>
           </div>
 
-          {editing && (
             <div className="grid gap-1.5">
               <Label>Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
@@ -3939,7 +3941,6 @@ function TaskFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-3">
             <div className="grid gap-1.5">
